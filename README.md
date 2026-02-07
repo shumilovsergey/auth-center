@@ -2,6 +2,60 @@
 
 Centralized authentication API in Go with Ed25519 signed tokens and SQLite storage.
 
+## Quick Start
+
+1. Download binary
+```bash
+wget https://github.com/shumilovsergey/auth-center/blob/main/bin/auth-center
+chmod +x auth-center
+sudo mkdir -p /bin/auth && sudo mv auth-center /bin/auth/auth
+```
+
+2. Create systemd service
+```bash
+sudo nano /etc/systemd/system/auth-center.service
+```
+```ini
+[Unit]
+Description=Auth-Center API
+After=network.target
+
+[Service]
+Type=simple
+User=srv
+Group=srv
+WorkingDirectory=/bin/auth
+ExecStart=/bin/auth-center/auth-center
+Restart=always
+RestartSec=5
+Environment=PORT=9103
+Environment=TOKENS=your-secret-token-1,your-secret-token-2
+Environment=DB_PATH=/bin/auth-center/auth-center.db
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Set ownership
+```bash
+sudo chown -R srv:srv /bin/auth-center
+```
+
+4. Start service
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable auth-center
+sudo systemctl start auth-center
+sudo systemctl status auth-center
+```
+
+5. Health check
+```bash
+curl http://localhost:9103/health
+```
+
+
+
 ## Build
 
 ### Requirements
@@ -34,7 +88,7 @@ When running locally (without systemd), create `.env` in the project root:
 ```env
 PORT=8080
 TOKENS=token1,token2,token3
-DB_PATH=./auth.db
+DB_PATH=./auth-center.db
 ```
 
 ## API Endpoints
@@ -138,54 +192,3 @@ Invalid token:
 {"error": "invalid token"}
 ```
 
-## Quick Start
-
-1. Download binary
-```bash
-wget <release-url>/auth-center
-chmod +x auth-center
-sudo mkdir -p /bin/auth && sudo mv auth-center /bin/auth/auth
-```
-
-2. Create systemd service
-```bash
-sudo nano /etc/systemd/system/auth-center.service
-```
-```ini
-[Unit]
-Description=Auth-Center API
-After=network.target
-
-[Service]
-Type=simple
-User=srv
-Group=srv
-WorkingDirectory=/bin/auth
-ExecStart=/bin/auth/auth
-Restart=always
-RestartSec=5
-Environment=PORT=8080
-Environment=TOKENS=your-secret-token-1,your-secret-token-2
-Environment=DB_PATH=/bin/auth/auth.db
-
-[Install]
-WantedBy=multi-user.target
-```
-
-3. Set ownership
-```bash
-sudo chown -R srv:srv /bin/auth
-```
-
-4. Start service
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable auth-center
-sudo systemctl start auth-center
-sudo systemctl status auth-center
-```
-
-5. Health check
-```bash
-curl http://localhost:8080/health
-```

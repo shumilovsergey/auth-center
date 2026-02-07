@@ -34,7 +34,7 @@ func Load() (*Config, error) {
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./auth.db"
+		dbPath = "./auth-center.db"
 	}
 
 	return &Config{
