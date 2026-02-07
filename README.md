@@ -8,7 +8,7 @@ Centralized authentication API in Go with Ed25519 signed tokens and SQLite stora
 ```bash
 wget https://github.com/shumilovsergey/auth-center/blob/main/bin/auth-center
 chmod +x auth-center
-sudo mkdir -p /bin/auth && sudo mv auth-center /bin/auth/auth
+sudo mkdir -p /bin/auth-center && sudo mv auth-center /bin/auth-center/auth-center
 ```
 
 2. Create systemd service
