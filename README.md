@@ -58,36 +58,34 @@ sudo systemctl status auth-center
 curl http://localhost:9103/health
 ```
 
+## Development
 
+Requires Docker. All source code and build files live in `build/`.
 
-## Build
-
-### Requirements
-
-- Go 1.21+
-- GCC (for SQLite CGO compilation)
-
-### Build
-
+### Run locally (dev mode)
 ```bash
-cd auth-center
-go mod tidy
+cd build && make run
+```
+Starts the server inside a container with source code mounted. Code changes require restart.
+
+### Build Linux binary
+```bash
 cd build && make build
-# Binary: bin/auth-center
 ```
+Outputs a statically linked Linux x86-64 binary to `bin/auth-center`.
 
-### Commands
-
+### All commands (run from `build/`)
 ```bash
-make build   # Compile binary
-make run     # Build and run
+make build   # Build Linux binary via Docker
+make run     # Run dev server in Docker
 make clean   # Remove binary
-make tidy    # Clean up go.mod
+make tidy    # go mod tidy
+make deps    # go mod download
 ```
 
-### Local Development (.env)
+### Local .env
 
-When running locally (without systemd), create `.env` in the project root:
+Create `.env` in the project root:
 
 ```env
 PORT=8080
@@ -195,4 +193,3 @@ Invalid token:
 ```json
 {"error": "invalid token"}
 ```
-

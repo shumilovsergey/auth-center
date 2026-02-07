@@ -1,20 +1,19 @@
-.PHONY: build run clean
+.PHONY: build run clean deps tidy
 
 BINARY_NAME=auth-center
 BINARY_PATH=../bin/$(BINARY_NAME)
-MAIN_PATH=../cmd/server/main.go
 
 build:
-	cd .. && go build -o bin/$(BINARY_NAME) ./cmd/server
+	docker compose run --rm build
 
-run: build
-	cd .. && ./bin/$(BINARY_NAME)
+run:
+	docker compose up dev
 
 clean:
 	rm -f $(BINARY_PATH)
 
 deps:
-	cd .. && go mod download
+	go mod download
 
 tidy:
-	cd .. && go mod tidy
+	go mod tidy

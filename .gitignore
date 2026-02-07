@@ -3,3 +3,7 @@ CLAUDE.md
 ./claude
 
 .DS_Store
+
+
+*.db
+.env

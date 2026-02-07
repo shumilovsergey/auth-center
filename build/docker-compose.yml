@@ -1,0 +1,26 @@
+services:
+  dev:
+    build: .
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      - .:/app
+      - go-modules:/go/pkg/mod
+      - go-cache:/root/.cache/go-build
+    env_file:
+      - ../.env
+    command: go run ./cmd/server
+
+  build:
+    build: .
+    platform: linux/amd64
+    volumes:
+      - .:/app
+      - ../bin:/app/bin
+      - go-modules:/go/pkg/mod
+      - go-cache:/root/.cache/go-build
+    command: go build -ldflags '-linkmode external -extldflags "-static"' -o /app/bin/auth-center ./cmd/server
+
+volumes:
+  go-modules:
+  go-cache:
