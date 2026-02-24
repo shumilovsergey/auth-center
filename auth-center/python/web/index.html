@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>auth center</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="card">
+
+    <div class="card-title">auth center</div>
+
+    <div class="tiles">
+
+      <button class="tile" id="tile-mail" onclick="selectMethod('mail')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <path d="M2 7l10 8 10-8"/>
+        </svg>
+        mail
+      </button>
+
+      <button class="tile" id="tile-tg" onclick="selectMethod('tg')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        tg
+      </button>
+
+      <button class="tile" id="tile-solana" onclick="selectMethod('solana')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.5 6H6.5L4 8.5h13L19.5 6z"/>
+          <path d="M4.5 11.5L7 14h13l-2.5-2.5h-13z"/>
+          <path d="M19.5 17H6.5L4 19.5h13l2.5-2.5z"/>
+        </svg>
+        solana
+      </button>
+
+    </div>
+
+    <!-- mail — visual only -->
+    <div class="section" id="section-mail">
+      <input class="field" type="email"    placeholder="email" />
+      <input class="field" type="password" placeholder="password" />
+      <button class="action-btn">reg / log</button>
+    </div>
+
+    <!-- telegram -->
+    <div class="section" id="section-tg">
+      <div id="qr-area">
+        <div class="qr-container">
+          <img id="qr-img" src="" alt="" />
+        </div>
+        <a id="open-btn" href="#" target="_blank" class="action-btn">open in telegram</a>
+      </div>
+      <button class="action-btn" id="tg-refresh" onclick="startSession()">refresh</button>
+    </div>
+
+    <!-- solana -->
+    <div class="section" id="section-solana">
+      <button class="action-btn" id="solana-btn" onclick="connectWallet()">connect wallet</button>
+      <div class="no-wallet" id="no-wallet">
+        no wallet detected —
+        <a href="https://phantom.app" target="_blank">phantom</a> /
+        <a href="https://solflare.com" target="_blank">solflare</a>
+      </div>
+    </div>
+
+    <!-- result -->
+    <div class="result" id="result"></div>
+
+  </div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

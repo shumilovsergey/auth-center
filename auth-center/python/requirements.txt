@@ -1,0 +1,6 @@
+flask
+python-dotenv
+qrcode[pil]
+requests
+PyNaCl
+base58
