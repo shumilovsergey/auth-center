@@ -1,0 +1,19 @@
+services:
+
+  # run locally
+  auth:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8886:8886"
+    env_file: .env
+
+  # build linux/amd64 binary → ./bin/
+  release:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - ./bin:/out
+    entrypoint: ["cp", "/binary", "/out/auth-center-linux-amd64"]

@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>auth center</title>
+  <title>auth-center</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/style.css" />
+  <script>window.REDIRECT_URL = {{ redirect_url | tojson }};</script>
 </head>
 <body>
   <div class="card">
 
-    <div class="card-title">auth center</div>
+    <div class="card-title">auth-center</div>
 
     <div class="tiles">
 
-      <button class="tile" id="tile-mail" onclick="selectMethod('mail')">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2"/>
-          <path d="M2 7l10 8 10-8"/>
+      <button class="tile" id="tile-google" onclick="selectMethod('google')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 11h8.533c.044.385.067.78.067 1.184 0 2.734-.98 5.036-2.678 6.6C16.32 20.272 14.3 21 12 21c-4.97 0-9-4.03-9-9s4.03-9 9-9c2.43 0 4.63.964 6.243 2.528l-2.658 2.658C14.564 7.214 13.348 6.75 12 6.75c-2.9 0-5.25 2.35-5.25 5.25s2.35 5.25 5.25 5.25c2.188 0 3.954-1.223 4.773-3H12v-3z"/>
         </svg>
-        mail
+        google
       </button>
 
       <button class="tile" id="tile-tg" onclick="selectMethod('tg')">
@@ -40,11 +41,9 @@
 
     </div>
 
-    <!-- mail — visual only -->
-    <div class="section" id="section-mail">
-      <input class="field" type="email"    placeholder="email" />
-      <input class="field" type="password" placeholder="password" />
-      <button class="action-btn">reg / log</button>
+    <!-- google -->
+    <div class="section" id="section-google">
+      <a class="action-btn" id="google-btn" href="/google/login">continue with google</a>
     </div>
 
     <!-- telegram -->

@@ -1,4 +1,0 @@
-flask
-python-dotenv
-PyNaCl
-base58

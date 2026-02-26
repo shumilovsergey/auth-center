@@ -1,0 +1,19 @@
+services:
+
+  # run locally
+  client:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8890:8890"
+    env_file: .env
+
+  # build linux/amd64 binary → ./bin/
+  release:
+    build:
+      context: .
+      target: builder
+    volumes:
+      - ./bin:/out
+    entrypoint: ["cp", "/binary", "/out/client-linux-amd64"]

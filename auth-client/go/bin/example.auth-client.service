@@ -1,0 +1,21 @@
+[Unit]
+Description=Client App
+After=network.target
+
+[Service]
+User=root
+ExecStart=
+WorkingDirectory=
+
+Environment=PORT=
+Environment=AUTH_URL=https://auth-center.sh-development.ru
+Environment=AUTH_INTERNAL=http://localhost:8886
+Environment=APP_URL=https://auth.sh-development.ru
+Environment=APP_TOKEN=
+Environment=SECRET_KEY=
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -18,18 +18,29 @@ function selectMethod(method) {
   document.getElementById(`section-${method}`).classList.add('open');
 
   if (method === 'tg') startSession();
+
+  if (method === 'google') {
+    const r = window.REDIRECT_URL || '';
+    const href = '/google/login' + (r ? '?redirect=' + encodeURIComponent(r) : '');
+    document.getElementById('google-btn').href = href;
+  }
 }
 
 // ── shared ────────────────────────────────────────────────────────────────
 
 function showResult(type, text) {
   const el = document.getElementById('result');
-  el.className = type;
+  el.className = 'result ' + type;
   el.textContent = text;
 }
 
 function lockAll() {
   document.querySelectorAll('.tile').forEach(t => t.disabled = true);
+}
+
+function navigateWithCode(redirectUrl, code) {
+  const sep = redirectUrl.includes('?') ? '&' : '?';
+  window.location.href = `${redirectUrl}${sep}code=${code}`;
 }
 
 // ── telegram QR ───────────────────────────────────────────────────────────
@@ -44,9 +55,13 @@ async function startSession() {
   // reset state
   document.getElementById('qr-area').classList.remove('hidden');
   document.getElementById('tg-refresh').style.display = 'none';
-  document.getElementById('result').className = '';
+  document.getElementById('result').className = 'result';
 
-  const { token, qr, url } = await fetch('/qr-session', { method: 'POST' }).then(r => r.json());
+  const { token, qr, url } = await fetch('/qr-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ redirect: window.REDIRECT_URL || '' }),
+  }).then(r => r.json());
 
   document.getElementById('qr-img').src = `data:image/png;base64,${qr}`;
   document.getElementById('open-btn').href = url;
@@ -67,8 +82,13 @@ async function poll(token) {
   if (data.status === 'authenticated') {
     clearInterval(pollInterval);
     clearTimeout(pollTimeout);
-    lockAll();
 
+    if (data.redirect && data.code) {
+      navigateWithCode(data.redirect, data.code);
+      return;
+    }
+
+    lockAll();
     const u    = data.user;
     const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
     showResult('success',
@@ -84,6 +104,7 @@ async function poll(token) {
     document.getElementById('tg-refresh').style.display = 'block';
   }
 }
+
 
 // ── solana ────────────────────────────────────────────────────────────────
 
@@ -106,8 +127,10 @@ async function connectWallet() {
   const wallet   = getProvider();
 
   noWallet.classList.remove('visible');
+  btn.classList.remove('invalid');
 
   if (!wallet) {
+    btn.classList.add('invalid');
     noWallet.classList.add('visible');
     return;
   }
@@ -137,10 +160,16 @@ async function connectWallet() {
         public_key: publicKey,
         signature:  uint8ToBase64(new Uint8Array(signed.signature)),
         nonce,
+        redirect:   window.REDIRECT_URL || '',
       }),
     }).then(r => r.json());
 
     if (data.ok) {
+      if (data.redirect && data.code) {
+        navigateWithCode(data.redirect, data.code);
+        return;
+      }
+
       lockAll();
       showResult('success',
         `solana (${wallet.name})\n${data.public_key}`

@@ -1,0 +1,6 @@
+services:
+  client:
+    build: .
+    ports:
+      - "8890:8890"
+    env_file: .env

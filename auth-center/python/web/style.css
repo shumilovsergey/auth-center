@@ -135,8 +135,14 @@ body {
   width: 100%;
 }
 
-.field:focus       { border-color: var(--border-hover); }
+.field:focus        { border-color: var(--border-hover); }
 .field::placeholder { color: var(--text-dim); }
+
+.field.invalid       { border-color: #f05070; background: rgba(80, 20, 35, 0.25); }
+.field.invalid:focus { border-color: #ff6080; }
+
+.action-btn.invalid       { border-color: #f05070; color: #f05070; }
+.action-btn.invalid:hover { border-color: #ff6080; color: #ff6080; background: rgba(80, 20, 35, 0.25); }
 
 /* ── action button ──────────────────────────────────────────────────────── */
 

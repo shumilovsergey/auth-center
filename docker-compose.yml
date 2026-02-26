@@ -1,0 +1,29 @@
+services:
+
+  auth:
+    build: ./auth-center/python
+    ports:
+      - "8886:5000"
+    env_file: ./auth-center/python/.env
+    networks:
+      - internal
+
+  client:
+    build: ./client/python
+    ports:
+      - "8890:8890"
+    environment:
+      # browser opens this (host-side)
+      AUTH_URL: http://localhost:8886
+      # server-to-server inside Docker network
+      AUTH_INTERNAL: http://auth:5000
+      APP_URL: http://localhost:8890
+      SECRET_KEY: dev-secret
+      APP_TOKEN: client-secret-1
+    networks:
+      - internal
+    depends_on:
+      - auth
+
+networks:
+  internal:
