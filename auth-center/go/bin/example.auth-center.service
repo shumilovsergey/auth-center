@@ -1,0 +1,24 @@
+[Unit]
+Description=Auth Center
+After=network.target
+
+[Service]
+User=root
+ExecStart=
+WorkingDirectory=
+
+Environment=PORT=
+Environment=BOT_TOKEN=
+Environment=BOT_USERNAME=
+Environment=WEBHOOK_SECRET=
+Environment=APP_TOKENS=
+Environment=DIRECT_REDIRECT=https://auth.sh-development.ru
+Environment=GOOGLE_CLIENT_ID=
+Environment=GOOGLE_CLIENT_SECRET=
+Environment=GOOGLE_CALLBACK_URL=https://auth-center.sh-development.ru/google/callback
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
