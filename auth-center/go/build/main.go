@@ -555,9 +555,9 @@ func main() {
 	mux.HandleFunc("GET /google/login", handleGoogleLogin)
 	mux.HandleFunc("GET /google/callback", handleGoogleCallback)
 	mux.HandleFunc("POST /exchange", handleExchange)
-	mux.Handle("/style.css", fileServer)
-	mux.Handle("/script.js", fileServer)
-	mux.Handle("/favicon.svg", fileServer)
+	mux.Handle("GET /style.css", fileServer)
+	mux.Handle("GET /script.js", fileServer)
+	mux.Handle("GET /favicon.svg", fileServer)
 
 	port := os.Getenv("PORT")
 	if port == "" {
