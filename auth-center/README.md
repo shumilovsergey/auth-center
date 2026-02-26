@@ -27,7 +27,17 @@ Stateless — нет базы данных, нет хранения сессий
 **Telegram**
 1. [@BotFather](https://t.me/BotFather) → `/newbot` → скопировать `BOT_TOKEN`
 2. Username бота → `BOT_USERNAME`
-3. Зарегистрировать webhook: `POST https://api.telegram.org/bot<TOKEN>/setWebhook` с `url` и `secret_token`
+3. Придумать `WEBHOOK_SECRET` — произвольная строка
+4. Зарегистрировать webhook (выполнить один раз после деплоя):
+
+```bash
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-auth-center-domain/webhook",
+    "secret_token": "<WEBHOOK_SECRET>"
+  }'
+```
 
 **Google**
 1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → Create OAuth 2.0 Client ID
