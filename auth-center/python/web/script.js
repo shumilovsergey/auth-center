@@ -259,13 +259,26 @@ async function signWithMWA(btn) {
       },
     });
 
-    const account   = authResult.accounts[0];
-    const publicKey = account?.address;
-    if (!publicKey) throw new Error(`no address in authResult: ${JSON.stringify(authResult.accounts)}`);
+    const account    = authResult.accounts[0];
+    const rawAddress = account?.address;
+    if (!rawAddress) throw new Error(`no address in authResult: ${JSON.stringify(authResult.accounts)}`);
+
+    // MWA may return base64url-encoded public key instead of base58.
+    // Detect by checking for chars outside the base58 alphabet, then convert.
+    const isBase58 = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(rawAddress);
+    let publicKey;
+    if (isBase58) {
+      publicKey = rawAddress;
+    } else {
+      // base64url → bytes → base58
+      const b64    = rawAddress.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(rawAddress.length / 4) * 4, '=');
+      const pkBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      publicKey = toBase58(pkBytes);
+    }
 
     btn.textContent = 'signing...';
     const { nonce, error } = await fetchNonce(publicKey);
-    if (error) throw new Error(error);
+    if (error) throw new Error(`${error} (addr="${rawAddress}" → "${publicKey}")`);
 
     const nonceBytes  = new TextEncoder().encode(nonce);
     const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
@@ -273,11 +286,11 @@ async function signWithMWA(btn) {
     let signed_payloads;
     try {
       ({ signed_payloads } = await wallet.signMessages({
-        addresses: [publicKey],
+        addresses: [rawAddress],  // use original format the wallet understands
         payloads:  [nonceBase64],
       }));
     } catch (e) {
-      throw new Error(`signMessages failed (address="${publicKey}"): ${e.message}`);
+      throw new Error(`signMessages failed (addr="${rawAddress}"): ${e.message}`);
     }
 
     // signed_payloads are base64 strings; decoded = message_bytes || signature (last 64 bytes)
