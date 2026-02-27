@@ -134,6 +134,28 @@ async function fetchNonce(publicKey) {
   }).then(r => r.json());
 }
 
+// ── module preloading ─────────────────────────────────────────────────────
+//
+// Modules are loaded at page startup, BEFORE any user gesture.
+// Chrome on Android has a tight user-gesture window for launching wallet
+// intents — if we import() inside the click handler it will expire before
+// MWA gets a chance to open the wallet app.
+
+let _wsGetWallets = null; // @wallet-standard/app
+let _mwaTransact  = null; // @solana-mobile/mobile-wallet-adapter-protocol
+
+;(async () => {
+  const jobs = [
+    import('https://esm.sh/@wallet-standard/app@1').catch(() => null),
+    IS_ANDROID
+      ? import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol@2').catch(() => null)
+      : Promise.resolve(null),
+  ];
+  const [ws, mwa] = await Promise.all(jobs);
+  if (ws)  _wsGetWallets = ws.getWallets;
+  if (mwa) _mwaTransact  = mwa.transact;
+})();
+
 // ── path 1: injected provider (desktop extension / wallet in-app browser) ─
 
 function getInjectedProvider() {
@@ -160,20 +182,35 @@ async function signWithInjected(injected, btn) {
   };
 }
 
-// ── path 2: wallet standard (broader wallet support, same in-app browsers) ─
+// ── path 2: wallet standard ───────────────────────────────────────────────
+//
+// Uses the preloaded module. Waits briefly for wallets that register async
+// (Seeker / other Android wallets may register a moment after page load).
+// Short timeout on Android so we don't eat the user-gesture window before MWA.
 
 async function findStandardWallet() {
-  try {
-    const { getWallets } = await import('https://esm.sh/@wallet-standard/app@1');
-    const { get } = getWallets();
-    return get().find(w =>
-      w.chains.some(c => c.startsWith('solana:')) &&
-      'standard:connect'   in w.features &&
-      'solana:signMessage' in w.features
-    ) || null;
-  } catch {
-    return null;
-  }
+  if (!_wsGetWallets) return null;
+
+  const { get, on } = _wsGetWallets();
+  const check = () => get().find(w =>
+    w.chains.some(c => c.startsWith('solana:')) &&
+    'standard:connect'   in w.features &&
+    'solana:signMessage' in w.features
+  ) || null;
+
+  const found = check();
+  if (found) return found;
+
+  // Wait for late-registering wallets.
+  // Android: short wait to preserve gesture context for MWA fallback.
+  const waitMs = IS_ANDROID ? 300 : 1000;
+  return new Promise(resolve => {
+    const t = setTimeout(() => resolve(null), waitMs);
+    on('register', () => {
+      const w = check();
+      if (w) { clearTimeout(t); resolve(w); }
+    });
+  });
 }
 
 async function signWithStandard(wallet, btn) {
@@ -198,18 +235,19 @@ async function signWithStandard(wallet, btn) {
   };
 }
 
-// ── path 3: mobile wallet adapter (android — saga 2 / seed vault / phantom) ─
+// ── path 3: mobile wallet adapter (android — saga 2 / seed vault) ─────────
 //
-// MWA connects via a local WebSocket to the wallet app using Android intents.
-// Works in any Android browser (Chrome, Firefox, etc.) without an extension.
+// Uses the preloaded module (no import delay at click time).
+// MWA opens the wallet app via Android intent over a local WebSocket —
+// works from Chrome or any Android browser without an extension.
 //
 // Signed payload format: message_bytes || signature_bytes
-// → signature = last 64 bytes of the returned Uint8Array
+// → signature = last 64 bytes
 
 async function signWithMWA(btn) {
-  const { transact } = await import('https://esm.sh/@solana-mobile/mobile-wallet-adapter-protocol@2');
+  if (!_mwaTransact) throw new Error('MWA module not loaded');
 
-  return await transact(async (wallet) => {
+  return await _mwaTransact(async (wallet) => {
     btn.textContent = 'opening wallet...';
 
     const authResult = await wallet.authorize({
@@ -233,14 +271,13 @@ async function signWithMWA(btn) {
     });
 
     // signed payload = message_bytes || signature (last 64 bytes)
-    const signedBytes = signedPayloads[0];
-    const sigBytes    = signedBytes.slice(-64);
+    const sigBytes = signedPayloads[0].slice(-64);
 
     return {
       publicKey,
       signature:  uint8ToBase64(sigBytes),
       nonce,
-      walletName: 'MWA Wallet',
+      walletName: 'Seeker / MWA',
     };
   });
 }
@@ -284,16 +321,12 @@ async function connectWallet() {
       if (stdWallet) result = await signWithStandard(stdWallet, btn);
     }
 
-    // 3. MWA — android only (saga 2, seed vault, phantom android)
+    // 3. MWA — android only (saga 2, seed vault, phantom android in chrome)
     if (!result && IS_ANDROID) {
-      try {
-        result = await signWithMWA(btn);
-      } catch {
-        // MWA not available or user cancelled — fall through to deep link
-      }
+      result = await signWithMWA(btn);
     }
 
-    // 4. no wallet found
+    // 4. no wallet found (iOS without Phantom, desktop without extension)
     if (!result) {
       btn.classList.add('invalid');
       btn.disabled    = false;
