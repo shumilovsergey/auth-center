@@ -255,7 +255,7 @@ async function signWithMWA(btn) {
       identity: {
         name: 'Auth Center',
         uri:  window.location.origin,
-        icon: `${window.location.origin}/favicon.svg`,
+        icon: '/favicon.svg',
       },
     });
 
