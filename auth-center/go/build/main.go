@@ -308,39 +308,37 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 // POST /solana/nonce
 func handleSolanaNonce(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		PublicKey string `json:"public_key"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.PublicKey) == "" {
-		jsonErr(w, "missing public_key", http.StatusBadRequest)
-		return
-	}
 	nonce := fmt.Sprintf("Sign in to Auth Center\nNonce: %s", randHex(16))
+	token := randHex(16)
 	noncesMu.Lock()
-	nonces[body.PublicKey] = nonce
+	nonces[token] = nonce
 	noncesMu.Unlock()
-	jsonOK(w, map[string]string{"nonce": nonce})
+	jsonOK(w, map[string]string{"nonce": nonce, "token": token})
 }
 
 // POST /solana/auth
 func handleSolanaAuth(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		PublicKey string `json:"public_key"`
-		Signature string `json:"signature"`
-		Nonce     string `json:"nonce"`
-		Redirect  string `json:"redirect"`
+		PublicKey   string `json:"public_key"`
+		Signature   string `json:"signature"`
+		Nonce       string `json:"nonce"`
+		NonceToken  string `json:"nonce_token"`
+		Redirect    string `json:"redirect"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr(w, "no data", http.StatusBadRequest)
 		return
 	}
-	if body.PublicKey == "" || body.Signature == "" || body.Nonce == "" {
+	if body.PublicKey == "" || body.Signature == "" || body.Nonce == "" || body.NonceToken == "" {
 		jsonErr(w, "missing fields", http.StatusBadRequest)
 		return
 	}
 
 	noncesMu.Lock()
-	expected, ok := nonces[body.PublicKey]
+	expected, ok := nonces[body.NonceToken]
+	if ok {
+		delete(nonces, body.NonceToken)
+	}
 	noncesMu.Unlock()
 	if !ok || expected != body.Nonce {
 		jsonErr(w, "invalid or expired nonce", http.StatusForbidden)
@@ -361,10 +359,6 @@ func handleSolanaAuth(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, "invalid signature", http.StatusForbidden)
 		return
 	}
-
-	noncesMu.Lock()
-	delete(nonces, body.PublicKey)
-	noncesMu.Unlock()
 
 	resp := map[string]any{"ok": true, "public_key": body.PublicKey}
 	if body.Redirect != "" {

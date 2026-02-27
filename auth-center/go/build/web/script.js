@@ -126,11 +126,10 @@ function uint8ToBase64(bytes) {
   return btoa(bin);
 }
 
-async function fetchNonce(publicKey) {
+async function fetchNonce() {
   return fetch('/solana/nonce', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ public_key: publicKey }),
   }).then(r => r.json());
 }
 
@@ -170,15 +169,16 @@ async function signWithInjected(injected, btn) {
   const publicKey = injected.wallet.publicKey.toBase58();
 
   btn.textContent = 'signing...';
-  const { nonce, error } = await fetchNonce(publicKey);
+  const { nonce, token, error } = await fetchNonce();
   if (error) throw new Error(error);
 
   const signed = await injected.wallet.signMessage(new TextEncoder().encode(nonce), 'utf8');
   return {
     publicKey,
-    signature:  uint8ToBase64(new Uint8Array(signed.signature)),
+    signature:   uint8ToBase64(new Uint8Array(signed.signature)),
     nonce,
-    walletName: injected.name,
+    nonceToken:  token,
+    walletName:  injected.name,
   };
 }
 
@@ -220,7 +220,7 @@ async function signWithStandard(wallet, btn) {
   const publicKey = toBase58(account.publicKey);
 
   btn.textContent = 'signing...';
-  const { nonce, error } = await fetchNonce(publicKey);
+  const { nonce, token, error } = await fetchNonce();
   if (error) throw new Error(error);
 
   const [result] = await wallet.features['solana:signMessage'].signMessage({
@@ -231,6 +231,7 @@ async function signWithStandard(wallet, btn) {
     publicKey,
     signature:  uint8ToBase64(result.signature),
     nonce,
+    nonceToken: token,
     walletName: wallet.name,
   };
 }
@@ -247,6 +248,15 @@ async function signWithStandard(wallet, btn) {
 async function signWithMWA(btn) {
   if (!_mwaTransact) throw new Error('MWA module not loaded');
 
+  // Pre-fetch nonce BEFORE opening transact so there are zero HTTP calls
+  // inside the MWA session. Phantom (and some other wallets) time out if the
+  // WebSocket sits idle while we wait for a network round-trip.
+  const { nonce, token, error: nonceErr } = await fetchNonce();
+  if (nonceErr) throw new Error(nonceErr);
+
+  const nonceBytes  = new TextEncoder().encode(nonce);
+  const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
+
   return await _mwaTransact(async (wallet) => {
     btn.textContent = 'opening wallet...';
 
@@ -259,39 +269,26 @@ async function signWithMWA(btn) {
       },
     });
 
-    const account    = authResult.accounts[0];
-    const rawAddress = account?.address;
+    const rawAddress = authResult.accounts[0]?.address;
     if (!rawAddress) throw new Error(`no address in authResult: ${JSON.stringify(authResult.accounts)}`);
 
     // MWA may return base64url-encoded public key instead of base58.
-    // Detect by checking for chars outside the base58 alphabet, then convert.
     const isBase58 = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(rawAddress);
     let publicKey;
     if (isBase58) {
       publicKey = rawAddress;
     } else {
-      // base64url → bytes → base58
-      const b64    = rawAddress.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(rawAddress.length / 4) * 4, '=');
+      const b64     = rawAddress.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(rawAddress.length / 4) * 4, '=');
       const pkBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
       publicKey = toBase58(pkBytes);
     }
 
     btn.textContent = 'signing...';
-    const { nonce, error } = await fetchNonce(publicKey);
-    if (error) throw new Error(`${error} (addr="${rawAddress}" → "${publicKey}")`);
 
-    const nonceBytes  = new TextEncoder().encode(nonce);
-    const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
-
-    let signed_payloads;
-    try {
-      ({ signed_payloads } = await wallet.signMessages({
-        addresses: [rawAddress],  // use original format the wallet understands
-        payloads:  [nonceBase64],
-      }));
-    } catch (e) {
-      throw new Error(`signMessages failed (addr="${rawAddress}"): ${e.message}`);
-    }
+    const { signed_payloads } = await wallet.signMessages({
+      addresses: [rawAddress],
+      payloads:  [nonceBase64],
+    });
 
     // signed_payloads are base64 strings; decoded = message_bytes || signature (last 64 bytes)
     const signedBytes = Uint8Array.from(atob(signed_payloads[0]), c => c.charCodeAt(0));
@@ -301,6 +298,7 @@ async function signWithMWA(btn) {
       publicKey,
       signature:  uint8ToBase64(sigBytes),
       nonce,
+      nonceToken: token,
       walletName: 'Seeker / MWA',
     };
   });
@@ -364,10 +362,11 @@ async function connectWallet() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        public_key: result.publicKey,
-        signature:  result.signature,
-        nonce:      result.nonce,
-        redirect:   window.REDIRECT_URL || '',
+        public_key:  result.publicKey,
+        signature:   result.signature,
+        nonce:       result.nonce,
+        nonce_token: result.nonceToken,
+        redirect:    window.REDIRECT_URL || '',
       }),
     }).then(r => r.json());
 

@@ -185,13 +185,10 @@ def webhook():
 
 @app.route("/solana/nonce", methods=["POST"])
 def solana_nonce():
-    data = request.get_json()
-    public_key = (data or {}).get("public_key", "").strip()
-    if not public_key:
-        return jsonify({"error": "missing public_key"}), 400
     nonce = f"Sign in to Auth Center\nNonce: {secrets.token_hex(16)}"
-    nonces[public_key] = nonce
-    return jsonify({"nonce": nonce})
+    token = secrets.token_hex(16)
+    nonces[token] = nonce
+    return jsonify({"nonce": nonce, "token": token})
 
 
 @app.route("/solana/auth", methods=["POST"])
@@ -200,15 +197,17 @@ def solana_auth():
     if not data:
         return jsonify({"error": "no data"}), 400
 
-    public_key = data.get("public_key", "").strip()
+    public_key  = data.get("public_key", "").strip()
     signature_b64 = data.get("signature", "").strip()
-    nonce = data.get("nonce", "").strip()
+    nonce       = data.get("nonce", "").strip()
+    nonce_token = data.get("nonce_token", "").strip()
     redirect_url = data.get("redirect", "")
 
-    if not all([public_key, signature_b64, nonce]):
+    if not all([public_key, signature_b64, nonce, nonce_token]):
         return jsonify({"error": "missing fields"}), 400
 
-    if nonces.get(public_key) != nonce:
+    expected = nonces.pop(nonce_token, None)
+    if expected is None or expected != nonce:
         return jsonify({"error": "invalid or expired nonce"}), 403
 
     try:
@@ -218,8 +217,6 @@ def solana_auth():
         return jsonify({"error": "invalid signature"}), 403
     except Exception:
         return jsonify({"error": "verification error"}), 400
-
-    del nonces[public_key]
 
     resp = {"ok": True, "public_key": public_key}
 
