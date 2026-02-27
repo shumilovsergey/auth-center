@@ -31,12 +31,7 @@ Stateless — нет базы данных, нет хранения сессий
 4. Зарегистрировать webhook (выполнить один раз после деплоя):
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://your-auth-center-domain/webhook",
-    "secret_token": "<WEBHOOK_SECRET>"
-  }'
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Type: application/json" -d '{"url":"https://your-auth-center-domain/webhook","secret_token":"<WEBHOOK_SECRET>"}'
 ```
 
 **Google**
