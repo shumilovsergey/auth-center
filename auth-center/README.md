@@ -2,7 +2,7 @@
 
 # auth-center
 
-Сервер аутентификации. Принимает пользователя, проверяет личность через Telegram / Solana / Google/.. , выдаёт одноразовый код приложению.
+Сервер аутентификации. Принимает пользователя, проверяет личность через auth провайдер , выдаёт одноразовый код приложению.
 
 Stateless — нет базы данных, нет хранения сессий между запросами.
 
@@ -50,6 +50,28 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Ty
 Шаблон: `go/bin/example.auth-center.service`
 
 Скопировать в `/etc/systemd/system/auth-center.service`, заполнить все переменные.
+
+---
+
+## Локальная разработка приложения
+
+Если auth-center уже развёрнут в проде, а приложение разрабатывается локально — ничего дополнительно поднимать не нужно.
+
+Схема работает потому, что редирект после аутентификации происходит в браузере разработчика, а не на сервере.
+
+**Настройки приложения:**
+
+```
+AUTH_URL=https://your-auth-center-domain     # публичный URL прод auth-center
+AUTH_INTERNAL=https://your-auth-center-domain  # тот же URL для /exchange с бэкенда
+APP_URL=http://localhost:<порт>              # локальный адрес приложения
+APP_TOKEN=local-dev-secret                   # произвольная строка
+```
+
+**Добавить токен в прод auth-center:**
+
+В переменную `APP_TOKENS` на проде добавить `local-dev-secret` через запятую, перезапустить сервис.
+
 
 ---
 
@@ -117,4 +139,4 @@ session["user_id"] = data["user"]["id"]
 session["method"]  = data["method"]
 ```
 
-`user.id` — постоянный уникальный идентификатор (Telegram ID, Solana pubkey, Google sub). Используй как primary key.
+`user.id` — постоянный уникальный идентификатор.
