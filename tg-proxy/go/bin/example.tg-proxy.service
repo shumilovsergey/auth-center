@@ -1,0 +1,17 @@
+[Unit]
+Description=Telegram Webhook Proxy
+After=network.target
+
+[Service]
+User=root
+ExecStart=
+WorkingDirectory=
+
+Environment=PORT=8080
+Environment=AUTH_CENTER_URL=
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

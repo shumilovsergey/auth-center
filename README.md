@@ -29,6 +29,7 @@ systemctl enable --now auth-client
 
 - [auth-center](auth-center/README.md) — сервер аутентификации, к нему подключаются все приложения
 - [auth-client](auth-client/README.md) — демо-клиент и референсная реализация подключения
+- [tg-proxy](tg-proxy/README.md) — прокси для Telegram webhook, если VPS с auth-center не имеет доступа к серверам Telegram
 
 ---
 
