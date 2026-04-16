@@ -27,6 +27,65 @@
 
 ---
 
+## Telegram link preview (OG-теги)
+
+Когда auth-center отправляет пользователю сообщение с URL приложения, Telegram автоматически показывает превью страницы — иконку и название. Чтобы это работало, нужно добавить три meta-тега в `<head>` HTML-страницы приложения.
+
+### Что добавить в HTML
+
+```html
+<meta property="og:type"  content="website" />
+<meta property="og:title" content="ИМЯ ПРИЛОЖЕНИЯ" />
+<meta property="og:image" content="https://ДОМЕН/icon.png" />
+```
+
+### Как сделать иконку
+
+Иконка — PNG 512×512, тёмный фон с закруглёнными углами, символ в цвете `#c4b5fd` (нeon-purple, соответствует стилю auth-center).
+
+Генерируется скриптом на Python (требует `Pillow`):
+
+```python
+from PIL import Image, ImageDraw
+
+SIZE = 512
+img = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
+draw = ImageDraw.Draw(img)
+
+S = SIZE / 32  # масштаб от SVG 32x32
+
+# фон #111120 с радиусом 8
+draw.rounded_rectangle([0, 0, SIZE-1, SIZE-1], radius=int(8*S), fill=(17, 17, 32, 255))
+
+neon = (196, 181, 253, 255)  # #c4b5fd
+lw = max(2, int(2 * S))
+
+# здесь рисуем символ — пример: иконка ключа (как в auth-client)
+cx, cy, cr = 11*S, 16*S, 5*S
+draw.ellipse([cx-cr, cy-cr, cx+cr, cy+cr], outline=neon, width=lw)
+draw.line([(16*S, 16*S), (27*S, 16*S)], fill=neon, width=lw)
+draw.line([(22*S, 16*S), (22*S, 21*S)], fill=neon, width=lw)
+draw.line([(26*S, 16*S), (26*S, 19*S)], fill=neon, width=lw)
+
+img.save('web/icon.png')
+```
+
+Символ меняется под каждое приложение — главное сохранить фон и цвет.
+
+### Где хранить иконку
+
+Положить `icon.png` в `web/` рядом с `index.html` — она встроится в бинарь через `//go:embed web` и будет доступна по `/icon.png`.
+
+### URL для og:image
+
+После деплоя иконка доступна по адресу `https://ДОМЕН/icon.png`. Можно также использовать raw-ссылку из GitHub (если репозиторий публичный):
+
+```
+https://raw.githubusercontent.com/USER/REPO/main/APP/go/build/web/icon.png
+```
+
+---
+
 ## Сервисный файл
 
 Шаблон: `go/bin/example.auth-client.service`

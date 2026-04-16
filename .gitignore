@@ -4,6 +4,6 @@ CLAUDE.md
 
 .DS_Store
 
-
+.backup
 *.db
 .env
