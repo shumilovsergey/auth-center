@@ -18,6 +18,7 @@ Stateless — нет базы данных, нет хранения сессий
 | `WEBHOOK_SECRET` | | Секрет для проверки Telegram webhook (задаётся при регистрации webhook) |
 | `APP_TOKENS` | ★ | Секреты приложений через запятую — кто может вызывать `/exchange` |
 | `DIRECT_REDIRECT` | | Куда редиректить пользователя если он открыл auth-center напрямую без `?redirect=` |
+| `TELEGRAM_API_URL` | | Базовый URL Telegram API (по умолчанию `https://api.telegram.org`). Если VPS не имеет доступа к Telegram — указать URL tg-proxy, например `https://tg-proxy.domain.com/tg-api` |
 | `GOOGLE_CLIENT_ID` | | Client ID из Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | | Client Secret из Google Cloud Console |
 | `GOOGLE_CALLBACK_URL` | | Полный URL callback'а, должен совпадать с настройкой в Google Cloud (`https://your-domain/google/callback`) |

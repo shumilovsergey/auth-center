@@ -1,4 +1,4 @@
-module tg-proxy
+module auth-proxy
 
 go 1.23
 

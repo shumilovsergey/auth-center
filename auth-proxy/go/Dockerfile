@@ -12,4 +12,4 @@ WORKDIR /app
 COPY build/ .
 RUN go mod tidy && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /tg-proxy .
+    go build -ldflags="-s -w" -o /auth-proxy .

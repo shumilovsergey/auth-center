@@ -1,13 +1,14 @@
 ← [auth-center](../README.md)
 
-# tg-proxy
+# auth-proxy
 
-Минимальный прокси-сервис. Принимает Telegram webhook и пересылает его на auth-center.
+Минимальный прокси-сервис между Telegram и auth-center.
 
 Нужен когда VPS с auth-center не имеет доступа к серверам Telegram.
 
 ```
-Telegram → VPS-2 (tg-proxy) → VPS-1 (auth-center /webhook)
+Telegram      →  VPS-2 (auth-proxy /webhook)   →  VPS-1 (auth-center)
+VPS-1 (auth)  →  VPS-2 (auth-proxy /tg-api/*)  →  Telegram API
 ```
 
 ---
@@ -24,7 +25,7 @@ Telegram → VPS-2 (tg-proxy) → VPS-1 (auth-center /webhook)
 ## Локальная разработка
 
 ```bash
-cd tg-proxy/go
+cd auth-proxy/go
 cp .env.example .env   # заполнить AUTH_CENTER_URL
 docker-compose up proxy
 ```
@@ -34,24 +35,24 @@ docker-compose up proxy
 ## Сборка продакшн-бинаря (linux/amd64)
 
 ```bash
-cd tg-proxy/go
+cd auth-proxy/go
 docker-compose run --rm release
 ```
 
-Бинарь окажется в `bin/tg-proxy`. Скопировать на VPS-2.
+Бинарь окажется в `bin/auth-proxy`. Скопировать на VPS-2.
 
 ---
 
 ## Деплой на VPS-2
 
 1. Скопировать бинарь на сервер
-2. Скопировать `go/bin/example.tg-proxy.service` в `/etc/systemd/system/tg-proxy.service`
+2. Скопировать `go/bin/example.auth-proxy.service` в `/etc/systemd/system/auth-proxy.service`
 3. Заполнить `ExecStart`, `WorkingDirectory`, `AUTH_CENTER_URL`
 4. Запустить:
 
 ```bash
 systemctl daemon-reload
-systemctl enable --now tg-proxy
+systemctl enable --now auth-proxy
 ```
 
 5. Настроить nginx — SSL-терминация и проксирование на `127.0.0.1:8080`
@@ -65,7 +66,7 @@ systemctl enable --now tg-proxy
 ```bash
 curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://tg-proxy.your-domain.com/webhook","secret_token":"<WEBHOOK_SECRET>"}'
+  -d '{"url":"https://auth-proxy.your-domain.com/webhook","secret_token":"<WEBHOOK_SECRET>"}'
 ```
 
 Проверить:
@@ -81,4 +82,5 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo"
 | Метод | Путь | Описание |
 |---|---|---|
 | `POST` | `/webhook` | Пересылает тело и заголовок `X-Telegram-Bot-Api-Secret-Token` на auth-center |
+| `POST` | `/tg-api/{path...}` | Пересылает запросы к Telegram API от auth-center. Путь подставляется как есть: `/tg-api/botTOKEN/sendMessage` → `https://api.telegram.org/botTOKEN/sendMessage` |
 | `GET` | `/health` | Возвращает `200 OK` — для мониторинга |

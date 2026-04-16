@@ -33,11 +33,12 @@ var webFiles embed.FS
 // ── config ────────────────────────────────────────────────────────────────
 
 var (
-	botToken       string
-	botUsername    string
-	webhookSecret  string
-	appTokens      map[string]bool
-	directRedirect string
+	botToken        string
+	botUsername     string
+	webhookSecret   string
+	appTokens       map[string]bool
+	directRedirect  string
+	telegramAPIURL  string
 
 	googleClientID     string
 	googleClientSecret string
@@ -154,11 +155,19 @@ func newCode(user map[string]any, method string) string {
 	return c
 }
 
-func sendTG(chatID int64, text string) {
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
-	body, _ := json.Marshal(map[string]any{"chat_id": chatID, "text": text})
+func sendTG(chatID int64, text string, redirectURL string) {
+	apiURL := fmt.Sprintf("%s/bot%s/sendMessage", telegramAPIURL, botToken)
+	payload := map[string]any{"chat_id": chatID, "text": text}
+	if redirectURL != "" {
+		payload["text"] = text + "\n\n" + redirectURL
+		payload["link_preview_options"] = map[string]any{
+			"url":             redirectURL,
+			"show_above_text": true,
+		}
+	}
+	body, _ := json.Marshal(payload)
 	client := &http.Client{Timeout: 5 * time.Second}
-	client.Post(url, "application/json", bytes.NewReader(body)) //nolint:errcheck
+	client.Post(apiURL, "application/json", bytes.NewReader(body)) //nolint:errcheck
 }
 
 // ── template ──────────────────────────────────────────────────────────────
@@ -286,11 +295,12 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			sess.Status = "authenticated"
 			sess.User = user
-			if sess.Redirect != "" {
+			redirect := sess.Redirect
+			if redirect != "" {
 				sess.Code = newCode(user, "telegram")
 			}
 			sessionsMu.Unlock()
-			go sendTG(from.ID, "You are authenticated!")
+			go sendTG(from.ID, "You are authenticated!", redirect)
 		} else {
 			expired := ok && time.Since(sess.CreatedAt) > sessionTTL
 			if expired {
@@ -298,7 +308,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			sessionsMu.Unlock()
 			if ok {
-				go sendTG(from.ID, "This QR code has expired.")
+				go sendTG(from.ID, "This QR code has expired.", "")
 			}
 		}
 	}
@@ -519,6 +529,10 @@ func main() {
 	botUsername = os.Getenv("BOT_USERNAME")
 	webhookSecret = os.Getenv("WEBHOOK_SECRET")
 	directRedirect = os.Getenv("DIRECT_REDIRECT")
+	telegramAPIURL = os.Getenv("TELEGRAM_API_URL")
+	if telegramAPIURL == "" {
+		telegramAPIURL = "https://api.telegram.org"
+	}
 
 	googleClientID = os.Getenv("GOOGLE_CLIENT_ID")
 	googleClientSecret = os.Getenv("GOOGLE_CLIENT_SECRET")

@@ -16,4 +16,4 @@ services:
       target: builder
     volumes:
       - ./bin:/out
-    entrypoint: ["cp", "/tg-proxy", "/out/tg-proxy"]
+    entrypoint: ["cp", "/auth-proxy", "/out/auth-proxy"]
