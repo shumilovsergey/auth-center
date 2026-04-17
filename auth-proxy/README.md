@@ -36,7 +36,7 @@ docker-compose up proxy
 
 ```bash
 cd auth-proxy/go
-docker-compose run --rm release
+docker-compose build --no-cache release && docker-compose run --rm release
 ```
 
 Бинарь окажется в `bin/auth-proxy`. Скопировать на VPS-2.

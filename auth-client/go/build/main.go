@@ -123,6 +123,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	var errMsg string
 
 	if code != "" {
+		log.Printf("exchange: got code=%s, calling %s/exchange", code, authInternal)
 		body, _ := json.Marshal(map[string]string{
 			"code":      code,
 			"app_token": appToken,
@@ -133,11 +134,13 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 			bytes.NewReader(body),
 		)
 		if err != nil {
+			log.Printf("exchange: could not reach auth center: %v", err)
 			errMsg = "could not reach auth center"
 		} else {
 			defer resp.Body.Close()
 			var data map[string]any
 			json.NewDecoder(resp.Body).Decode(&data) //nolint:errcheck
+			log.Printf("exchange: response status=%d data=%v", resp.StatusCode, data)
 			if data["ok"] == true {
 				user, _ := data["user"].(map[string]any)
 				method, _ := data["method"].(string)

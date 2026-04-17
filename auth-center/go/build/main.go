@@ -391,14 +391,18 @@ func handleExchange(w http.ResponseWriter, r *http.Request) {
 		AppToken string `json:"app_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		log.Printf("exchange: decode error: %v", err)
 		jsonErr(w, "no data", http.StatusBadRequest)
 		return
 	}
+	log.Printf("exchange: request from %s code=%s token_ok=%v", r.RemoteAddr, body.Code, appTokens[body.AppToken])
 	if len(appTokens) > 0 && !appTokens[body.AppToken] {
+		log.Printf("exchange: unauthorized — unknown app_token")
 		jsonErr(w, "unauthorized", http.StatusForbidden)
 		return
 	}
 	if body.Code == "" {
+		log.Printf("exchange: missing code")
 		jsonErr(w, "missing code", http.StatusBadRequest)
 		return
 	}
@@ -410,6 +414,7 @@ func handleExchange(w http.ResponseWriter, r *http.Request) {
 			delete(codes, body.Code)
 		}
 		codesMu.Unlock()
+		log.Printf("exchange: invalid or expired code=%s", body.Code)
 		jsonErr(w, "invalid or expired code", http.StatusForbidden)
 		return
 	}
@@ -418,6 +423,7 @@ func handleExchange(w http.ResponseWriter, r *http.Request) {
 	delete(codes, body.Code)
 	codesMu.Unlock()
 
+	log.Printf("exchange: ok method=%s user=%v", method, user)
 	jsonOK(w, map[string]any{"ok": true, "user": user, "method": method})
 }
 
