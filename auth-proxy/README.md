@@ -77,6 +77,31 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo"
 
 ---
 
+## Проверка работы прокси
+
+Убедиться, что `/tg-api` проксирует запросы к Telegram:
+
+```bash
+curl -X POST "https://<proxy-domain>/tg-api/bot<BOT_TOKEN>/getMe"
+```
+
+Успешный ответ — JSON от Telegram с данными бота:
+
+```json
+{"ok":true,"result":{"id":123456,"is_bot":true,"first_name":"MyBot","username":"mybot"}}
+```
+
+Если вернулось `{"ok":false,...}` — прокси работает, но токен неверный.  
+Если `502 Bad Gateway` — прокси не может достучаться до `api.telegram.org`.
+
+Проверить `/health`:
+
+```bash
+curl "https://<proxy-domain>/health"
+```
+
+---
+
 ## Эндпоинты
 
 | Метод | Путь | Описание |

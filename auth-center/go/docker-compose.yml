@@ -16,4 +16,4 @@ services:
       target: builder
     volumes:
       - ./bin:/out
-    entrypoint: ["cp", "/binary", "/out/auth-center-linux-amd64"]
+    entrypoint: ["cp", "/auth-center", "/out/auth-center"]

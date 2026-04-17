@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 )
 
 var (
+	buildTime     = "unknown"
 	authCenterURL string
 	httpClient    = &http.Client{Timeout: 10 * time.Second}
 )
@@ -84,6 +86,11 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
+		fmt.Printf("auth-proxy built: %s\n", buildTime)
+		os.Exit(0)
+	}
+
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
 
 	godotenv.Load() //nolint:errcheck

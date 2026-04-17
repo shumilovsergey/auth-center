@@ -25,6 +25,10 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
+// ── build info (injected via -ldflags) ───────────────────────────────────
+
+var buildTime = "unknown"
+
 // ── embedded web files ────────────────────────────────────────────────────
 
 //go:embed web
@@ -523,6 +527,11 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 // ── main ──────────────────────────────────────────────────────────────────
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
+		fmt.Printf("auth-center built: %s\n", buildTime)
+		os.Exit(0)
+	}
+
 	godotenv.Load() //nolint:errcheck
 
 	botToken = os.Getenv("BOT_TOKEN")

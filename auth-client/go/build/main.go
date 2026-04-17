@@ -16,6 +16,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var buildTime = "unknown"
+
 // ── embedded web files ────────────────────────────────────────────────────
 
 //go:embed web
@@ -166,6 +168,11 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 // ── main ──────────────────────────────────────────────────────────────────
 
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
+		fmt.Printf("auth-client built: %s\n", buildTime)
+		os.Exit(0)
+	}
+
 	godotenv.Load() //nolint:errcheck
 
 	authURL = os.Getenv("AUTH_URL")
