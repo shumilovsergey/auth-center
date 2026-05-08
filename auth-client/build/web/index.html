@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="auth-client" />
-  <meta property="og:image" content="https://raw.githubusercontent.com/shumilovsergey/auth-center/main/auth-client/go/build/web/icon.png" />
+  <meta property="og:image" content="https://raw.githubusercontent.com/shumilovsergey/auth-center/main/auth-client/build/web/icon.png" />
   <style>
     :root {
       --bg: #0c0c12; --card: #111120; --border: #252340;
@@ -72,48 +72,23 @@
   {{if .User}}
     <div class="row">
       <span class="key">method</span><br>
-      <span class="value">{{.Method}}</span>
+      <span class="value">{{.User.Method}}</span>
     </div>
-
-    {{if eq .Method "telegram"}}
     <div class="row">
-      <span class="key">telegram id</span><br>
-      <span class="value">{{userID .User}}</span>
-      {{with fullName .User}}
+      <span class="key">id</span><br>
+      <span class="value">{{.User.AuthID}}</span>
+      {{if .User.Name}}
       <br><br><span class="key">name</span><br>
-      <span class="value">{{.}}</span>
-      {{end}}
-      {{with index .User "username"}}
-      <br><br><span class="key">username</span><br>
-      <span class="value">@{{.}}</span>
+      <span class="value">{{.User.Name}}</span>
       {{end}}
     </div>
-    {{end}}
-
-    {{if eq .Method "solana"}}
     <div class="row">
-      <span class="key">wallet</span><br>
-      <span class="value">{{userID .User}}</span>
+      <span class="key">member since</span><br>
+      <span class="value">{{.User.CreatedAt.Format "2006-01-02"}}</span>
+      <br><br><span class="key">last login</span><br>
+      <span class="value">{{.User.LastLogin.Format "2006-01-02 15:04 UTC"}}</span>
     </div>
-    {{end}}
-
-    {{if eq .Method "google"}}
-    <div class="row">
-      <span class="key">google id</span><br>
-      <span class="value">{{userID .User}}</span>
-      {{with index .User "email"}}
-      <br><br><span class="key">email</span><br>
-      <span class="value">{{.}}</span>
-      {{end}}
-      {{with index .User "name"}}
-      <br><br><span class="key">name</span><br>
-      <span class="value">{{.}}</span>
-      {{end}}
-    </div>
-    {{end}}
-
     <a class="btn" href="/logout">log out</a>
-
   {{else}}
     <div class="row">
       <span class="key">status</span><br>

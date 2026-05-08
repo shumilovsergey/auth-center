@@ -1,174 +1,86 @@
 package main
 
 import (
-	"bytes"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"strings"
+	"time"
 
-	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
 )
 
 var buildTime = "unknown"
 
-// ── embedded web files ────────────────────────────────────────────────────
-
 //go:embed web
 var webFiles embed.FS
-
-// ── config ────────────────────────────────────────────────────────────────
 
 var (
 	authURL      string
 	authInternal string
 	appURL       string
 	appToken     string
-	store        *sessions.CookieStore
 	tmpl         *template.Template
 	httpClient   = &http.Client{}
 )
 
-// ── template data ─────────────────────────────────────────────────────────
-
 type pageData struct {
-	User   map[string]any
-	Method string
-	Error  string
+	User  *User
+	Error string
 }
-
-// userID formats the user ID regardless of whether it came back as
-// float64 (Telegram — JSON number) or string (Solana — JSON string).
-func userID(user map[string]any) string {
-	if user == nil {
-		return ""
-	}
-	switch v := user["id"].(type) {
-	case float64:
-		return fmt.Sprintf("%.0f", v)
-	case string:
-		return v
-	}
-	return ""
-}
-
-// fullName joins first_name and last_name, ignoring empty parts.
-func fullName(user map[string]any) string {
-	parts := []string{}
-	for _, k := range []string{"first_name", "last_name"} {
-		if s, ok := user[k].(string); ok && s != "" {
-			parts = append(parts, s)
-		}
-	}
-	return strings.Join(parts, " ")
-}
-
-// ── template ──────────────────────────────────────────────────────────────
 
 func initTemplate() {
 	src, err := webFiles.ReadFile("web/index.html")
 	if err != nil {
 		log.Fatalf("web/index.html not found: %v", err)
 	}
-	funcs := template.FuncMap{
-		"userID":   userID,
-		"fullName": fullName,
-	}
-	tmpl = template.Must(template.New("index").Funcs(funcs).Parse(string(src)))
+	tmpl = template.Must(template.New("index").Parse(string(src)))
 }
 
-// ── session helpers ───────────────────────────────────────────────────────
+// ── request logging ───────────────────────────────────────────────────────────
 
-func getUser(r *http.Request) (map[string]any, string) {
-	sess, _ := store.Get(r, "s")
-	userJSON, _ := sess.Values["user"].(string)
-	method, _ := sess.Values["method"].(string)
-	if userJSON == "" {
-		return nil, ""
-	}
-	var user map[string]any
-	json.Unmarshal([]byte(userJSON), &user) //nolint:errcheck
-	return user, method
+type statusWriter struct {
+	http.ResponseWriter
+	status int
 }
 
-func saveUser(w http.ResponseWriter, r *http.Request, user map[string]any, method string) {
-	sess, _ := store.Get(r, "s")
-	b, _ := json.Marshal(user)
-	sess.Values["user"] = string(b)
-	sess.Values["method"] = method
-	sess.Save(r, w) //nolint:errcheck
+func (sw *statusWriter) WriteHeader(status int) {
+	sw.status = status
+	sw.ResponseWriter.WriteHeader(status)
 }
 
-func clearUser(w http.ResponseWriter, r *http.Request) {
-	sess, _ := store.Get(r, "s")
-	sess.Values = map[any]any{}
-	sess.Save(r, w) //nolint:errcheck
+func logMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
+		log.Printf("%s %s %d %s", r.Method, r.URL.Path, sw.status, time.Since(start).Round(time.Millisecond))
+	})
 }
 
-// ── handlers ──────────────────────────────────────────────────────────────
+// ── app routes ────────────────────────────────────────────────────────────────
+// Add your app-specific handlers here.
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-
-	code := r.URL.Query().Get("code")
-	var errMsg string
-
-	if code != "" {
-		log.Printf("exchange: got code=%s, calling %s/exchange", code, authInternal)
-		body, _ := json.Marshal(map[string]string{
-			"code":      code,
-			"app_token": appToken,
-		})
-		resp, err := httpClient.Post(
-			authInternal+"/exchange",
-			"application/json",
-			bytes.NewReader(body),
-		)
-		if err != nil {
-			log.Printf("exchange: could not reach auth center: %v", err)
-			errMsg = "could not reach auth center"
-		} else {
-			defer resp.Body.Close()
-			var data map[string]any
-			json.NewDecoder(resp.Body).Decode(&data) //nolint:errcheck
-			log.Printf("exchange: response status=%d data=%v", resp.StatusCode, data)
-			if data["ok"] == true {
-				user, _ := data["user"].(map[string]any)
-				method, _ := data["method"].(string)
-				saveUser(w, r, user, method)
-				http.Redirect(w, r, "/", http.StatusFound)
-				return
-			} else if e, ok := data["error"].(string); ok {
-				errMsg = e
-			} else {
-				errMsg = "exchange failed"
-			}
-		}
+	if code := r.URL.Query().Get("code"); code != "" {
+		handleCallback(w, r, code)
+		return
 	}
-
-	user, method := getUser(r)
-	tmpl.Execute(w, pageData{User: user, Method: method, Error: errMsg}) //nolint:errcheck
+	var user *User
+	if uid := sessionUserID(r); uid != 0 {
+		user, _ = getUserByID(uid)
+	}
+	tmpl.Execute(w, pageData{User: user}) //nolint:errcheck
 }
 
-func handleLogin(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, authURL+"/?redirect="+appURL+"/", http.StatusFound)
-}
-
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	clearUser(w, r)
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-// ── main ──────────────────────────────────────────────────────────────────
+// ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
@@ -176,6 +88,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
 	godotenv.Load() //nolint:errcheck
 
 	authURL = os.Getenv("AUTH_URL")
@@ -187,13 +100,9 @@ func main() {
 	if secretKey == "" {
 		secretKey = "dev-secret"
 	}
-	store = sessions.NewCookieStore([]byte(secretKey))
-	store.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400 * 30,
-		HttpOnly: true,
-	}
+	jwtSecret = []byte(secretKey)
 
+	initDB()
 	initTemplate()
 
 	webFS, _ := fs.Sub(webFiles, "web")
@@ -210,5 +119,5 @@ func main() {
 		port = "8890"
 	}
 	log.Printf("listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(http.ListenAndServe(":"+port, logMiddleware(mux)))
 }

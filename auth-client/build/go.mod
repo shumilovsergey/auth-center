@@ -3,8 +3,7 @@ module client
 go 1.23
 
 require (
-	github.com/gorilla/sessions v1.2.2
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/joho/godotenv v1.5.1
+	modernc.org/sqlite v1.34.5
 )
-
-require github.com/gorilla/securecookie v1.1.2 // indirect
