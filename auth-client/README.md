@@ -81,13 +81,36 @@ img.save('web/icon.png')
 После деплоя иконка доступна по адресу `https://ДОМЕН/icon.png`. Можно также использовать raw-ссылку из GitHub (если репозиторий публичный):
 
 ```
-https://raw.githubusercontent.com/USER/REPO/main/APP/go/build/web/icon.png
+https://raw.githubusercontent.com/USER/REPO/main/auth-client/build/web/icon.png
 ```
 
 ---
 
-## Сервисный файл
+## Локальная разработка
 
-Шаблон: `go/bin/example.auth-client.service`
+```bash
+cd auth-client
+cp .env.example .env   # заполнить переменные
+docker-compose up client
+```
 
-Скопировать в `/etc/systemd/system/auth-client.service`, заполнить все переменные.
+Сервис доступен на `http://localhost:8890`.
+
+## Сборка продакшн-бинаря (linux/amd64)
+
+```bash
+cd auth-client
+docker-compose run --rm release
+```
+
+Бинарь окажется в `bin/auth-client`.
+
+## Деплой
+
+1. Скопировать `bin/example.auth-client.service` в `/etc/systemd/system/auth-client.service`, заполнить все переменные.
+2. Запустить:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now auth-client
+```

@@ -29,17 +29,12 @@ systemctl enable --now auth-client
 
 - [auth-center](auth-center/README.md) — сервер аутентификации, к нему подключаются все приложения
 - [auth-client](auth-client/README.md) — демо-клиент и референсная реализация подключения
-- [tg-proxy](tg-proxy/README.md) — прокси для Telegram webhook, если VPS с auth-center не имеет доступа к серверам Telegram
+- [auth-proxy](auth-proxy/README.md) — прокси для Telegram webhook, если VPS с auth-center не имеет доступа к серверам Telegram
 
 ---
 
 ## Dev flow
 
-```
-python/   ← MVP, proof of concept, запускается через Docker
-go/       ← продакшн, компилируется в статический бинарник под linux/amd64
-```
+Локальная разработка — `docker-compose up` (горячая перезагрузка через `go run`).
 
-Изменения в Python не переносятся в Go автоматически. Когда фича проверена — рефакторинг в Go делается отдельно.
-
-Бинарники коммитятся в git. На сервере нет сборки — только `git pull` и рестарт сервиса.
+Продакшн-бинарь собирается через `docker-compose run --rm release` и коммитится в git. На сервере нет сборки — только `git pull` и рестарт сервиса.

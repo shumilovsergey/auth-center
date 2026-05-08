@@ -18,7 +18,7 @@ Stateless — нет базы данных, нет хранения сессий
 | `WEBHOOK_SECRET` | | Секрет для проверки Telegram webhook (задаётся при регистрации webhook) |
 | `APP_TOKENS` | ★ | Секреты приложений через запятую — кто может вызывать `/exchange` |
 | `DIRECT_REDIRECT` | | Куда редиректить пользователя если он открыл auth-center напрямую без `?redirect=` |
-| `TELEGRAM_API_URL` | | Базовый URL Telegram API (по умолчанию `https://api.telegram.org`). Если VPS не имеет доступа к Telegram — указать URL tg-proxy, например `https://tg-proxy.domain.com/tg-api` |
+| `TELEGRAM_API_URL` | | Базовый URL Telegram API (по умолчанию `https://api.telegram.org`). Если VPS не имеет доступа к Telegram — указать URL auth-proxy, например `https://auth-proxy.domain.com/tg-api` |
 | `GOOGLE_CLIENT_ID` | | Client ID из Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | | Client Secret из Google Cloud Console |
 | `GOOGLE_CALLBACK_URL` | | Полный URL callback'а, должен совпадать с настройкой в Google Cloud (`https://your-domain/google/callback`) |
@@ -46,15 +46,38 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Ty
 
 ---
 
-## Сервисный файл
+## Локальная разработка
 
-Шаблон: `go/bin/example.auth-center.service`
+```bash
+cd auth-center
+cp .env.example .env   # заполнить переменные
+docker-compose up auth
+```
 
-Скопировать в `/etc/systemd/system/auth-center.service`, заполнить все переменные.
+Сервис доступен на `http://localhost:8886`. Горячая перезагрузка при изменении файлов в `build/`.
+
+## Сборка продакшн-бинаря (linux/amd64)
+
+```bash
+cd auth-center
+docker-compose run --rm release
+```
+
+Бинарь окажется в `bin/auth-center`.
+
+## Деплой
+
+1. Скопировать `bin/example.auth-center.service` в `/etc/systemd/system/auth-center.service`, заполнить все переменные.
+2. Запустить:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now auth-center
+```
 
 ---
 
-## Локальная разработка приложения
+## Подключение приложения
 
 Если auth-center уже развёрнут в проде, а приложение разрабатывается локально — ничего дополнительно поднимать не нужно.
 
@@ -133,11 +156,6 @@ Content-Type: application/json
 
 ### 4. Создать сессию в своём приложении
 
-Auth-center не помнит пользователя — это задача приложения.
-
-```python
-session["user_id"] = data["user"]["id"]
-session["method"]  = data["method"]
-```
+Auth-center не помнит пользователя — это задача приложения. Сохранить `user.id` и `method` в сессию.
 
 `user.id` — постоянный уникальный идентификатор.

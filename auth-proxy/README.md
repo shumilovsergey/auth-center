@@ -25,7 +25,7 @@ VPS-1 (auth)  →  VPS-2 (auth-proxy /tg-api/*)  →  Telegram API
 ## Локальная разработка
 
 ```bash
-cd auth-proxy/go
+cd auth-proxy
 cp .env.example .env   # заполнить AUTH_CENTER_URL
 docker-compose up proxy
 ```
@@ -35,8 +35,8 @@ docker-compose up proxy
 ## Сборка продакшн-бинаря (linux/amd64)
 
 ```bash
-cd auth-proxy/go
-docker-compose build --no-cache release && docker-compose run --rm release
+cd auth-proxy
+docker-compose run --rm release
 ```
 
 Бинарь окажется в `bin/auth-proxy`. Скопировать на VPS-2.
@@ -46,7 +46,7 @@ docker-compose build --no-cache release && docker-compose run --rm release
 ## Деплой на VPS-2
 
 1. Скопировать бинарь на сервер
-2. Скопировать `go/bin/example.auth-proxy.service` в `/etc/systemd/system/auth-proxy.service`
+2. Скопировать `bin/example.auth-proxy.service` в `/etc/systemd/system/auth-proxy.service`
 3. Заполнить `ExecStart`, `WorkingDirectory`, `AUTH_CENTER_URL`
 4. Запустить:
 
