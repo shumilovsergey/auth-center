@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -18,65 +17,30 @@ var (
 	httpClient    = &http.Client{Timeout: 10 * time.Second}
 )
 
-// POST /webhook — forward to auth-center as-is
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	log.Printf("webhook: incoming from %s", r.RemoteAddr)
+// ── request logging ───────────────────────────────────────────────────────────
 
-	req, err := http.NewRequest("POST", authCenterURL+"/webhook", r.Body)
-	if err != nil {
-		log.Printf("webhook: failed to build request: %v", err)
-		http.Error(w, "proxy error", http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
-	if secret := r.Header.Get("X-Telegram-Bot-Api-Secret-Token"); secret != "" {
-		req.Header.Set("X-Telegram-Bot-Api-Secret-Token", secret)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		log.Printf("webhook: upstream error: %v", err)
-		http.Error(w, "upstream unreachable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body) //nolint:errcheck
-
-	log.Printf("webhook: forwarded → %d (%s)", resp.StatusCode, time.Since(start).Round(time.Millisecond))
+type statusWriter struct {
+	http.ResponseWriter
+	status int
 }
 
-// POST /tg-api/{path...} — forward Telegram API calls from auth-center to Telegram
-func handleTelegramAPI(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	path := r.PathValue("path")
-	target := "https://api.telegram.org/" + path
-
-	req, err := http.NewRequest("POST", target, r.Body)
-	if err != nil {
-		log.Printf("tg-api: failed to build request: %v", err)
-		http.Error(w, "proxy error", http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Content-Type", r.Header.Get("Content-Type"))
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		log.Printf("tg-api: upstream error: %v", err)
-		http.Error(w, "upstream unreachable", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body) //nolint:errcheck
-
-	log.Printf("tg-api: %s → %d (%s)", path, resp.StatusCode, time.Since(start).Round(time.Millisecond))
+func (sw *statusWriter) WriteHeader(status int) {
+	sw.status = status
+	sw.ResponseWriter.WriteHeader(status)
 }
 
-// GET /health — liveness check
+func logMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
+		log.Printf("%s %s %d %s", r.Method, r.URL.Path, sw.status, time.Since(start).Round(time.Millisecond))
+	})
+}
+
+// ── handlers ──────────────────────────────────────────────────────────────────
+
+// GET /health
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
@@ -85,6 +49,8 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ── main ──────────────────────────────────────────────────────────────────────
+
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
 		fmt.Printf("auth-proxy built: %s\n", buildTime)
@@ -92,7 +58,6 @@ func main() {
 	}
 
 	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
-
 	godotenv.Load() //nolint:errcheck
 
 	authCenterURL = os.Getenv("AUTH_CENTER_URL")
@@ -110,6 +75,6 @@ func main() {
 	mux.HandleFunc("POST /tg-api/{path...}", handleTelegramAPI)
 	mux.HandleFunc("GET /health", handleHealth)
 
-	log.Printf("auth-proxy starting — port=%s upstream=%s", port, authCenterURL)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Printf("listening on :%s upstream=%s", port, authCenterURL)
+	log.Fatal(http.ListenAndServe(":"+port, logMiddleware(mux)))
 }
