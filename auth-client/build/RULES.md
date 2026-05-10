@@ -63,6 +63,8 @@ The `users` table is created automatically. It holds the minimum:
 
 Add app-specific columns and tables in `app_db.go`. Always reference `users.id` as the foreign key — never `auth_id`.
 
+Name the DB file after the binary — `<app-name>.db`. For this template it is `auth-client.db`. When building a new app, change the default in `db.go` and set `DB_PATH` in the systemd service file accordingly.
+
 New columns on an existing DB need an `ALTER TABLE` fallback:
 ```go
 db.Exec(`ALTER TABLE users ADD COLUMN my_col TEXT`) // nolint:errcheck — ok if column exists

@@ -29,7 +29,7 @@ type User struct {
 func initDB() {
 	path := os.Getenv("DB_PATH")
 	if path == "" {
-		path = "app.db"
+		path = "auth-client.db"
 	}
 	var err error
 	db, err = sql.Open("sqlite", path)
