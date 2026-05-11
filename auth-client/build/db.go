@@ -65,7 +65,7 @@ func upsertUser(authID, method, name string) (int64, bool, error) {
 		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(auth_id) DO UPDATE SET
 			method     = excluded.method,
-			name       = excluded.name,
+			name       = CASE WHEN excluded.name != '' THEN excluded.name ELSE users.name END,
 			last_login = CURRENT_TIMESTAMP
 	`, authID, method, name)
 	if err != nil {

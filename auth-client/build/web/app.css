@@ -1,0 +1,8 @@
+/* app-specific styles go here */
+
+.placeholder {
+  color: var(--text-dim);
+  font-size: 36px;
+  letter-spacing: .2em;
+  font-style: italic;
+}

@@ -112,9 +112,12 @@ func main() {
 	mux.HandleFunc("GET /", handleIndex)
 	mux.HandleFunc("GET /login", handleLogin)
 	mux.HandleFunc("GET /logout", handleLogout)
+	mux.HandleFunc("GET /open-food-scanner", handleOpenFoodScanner)
 	mux.Handle("GET /favicon.svg", fileServer)
-	mux.Handle("GET /style.css", fileServer)
-	mux.Handle("GET /script.js", fileServer)
+	mux.Handle("GET /shell.css", fileServer)
+	mux.Handle("GET /shell.js", fileServer)
+	mux.Handle("GET /app.css", fileServer)
+	mux.Handle("GET /app.js", fileServer)
 
 	port := os.Getenv("PORT")
 	if port == "" {

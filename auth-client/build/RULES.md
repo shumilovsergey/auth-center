@@ -113,6 +113,46 @@ Copy `.env.example` to `.env` for local dev. Never commit `.env`.
 
 ---
 
+## Cross-app login (delegate)
+
+Lets a user open another app without logging in again. The receiving app needs no changes — its existing `/?code=` handling already works.
+
+**On the sending app (App1), add a handler in `main.go`:**
+
+```go
+func handleOpenApp2(w http.ResponseWriter, r *http.Request) {
+    uid := sessionUserID(r)
+    if uid == 0 {
+        http.Redirect(w, r, "/login", http.StatusFound)
+        return
+    }
+    code, err := delegateCode(uid)
+    if err != nil {
+        log.Printf("delegate error: %v", err)
+        http.Error(w, "could not open app", http.StatusInternalServerError)
+        return
+    }
+    http.Redirect(w, r, "https://app2.example.com/?code="+code, http.StatusFound)
+}
+```
+
+Register the route:
+```go
+mux.HandleFunc("GET /open-app2", handleOpenApp2)
+```
+
+Add a link in the UI:
+```html
+<a class="btn" href="/open-app2">Open App 2</a>
+```
+
+**Requirements:**
+- App1 must have a valid `APP_TOKEN` in auth-center's `APP_TOKENS`
+- App2 must also have a valid `APP_TOKEN` in auth-center's `APP_TOKENS`
+- No other config needed — App1 does not need to know App2's token
+
+---
+
 ## Build & Deploy
 
 **Local dev** (hot-reload via `go run`):

@@ -31,8 +31,8 @@ func cleanCodes() {
 	}
 }
 
-// newCode issues a one-time code for a verified user. Called by each provider
-// after successful authentication.
+// newCode issues a one-time code for a verified user. Any trusted app can
+// redeem it via POST /exchange.
 func newCode(user map[string]any, method string) string {
 	cleanCodes()
 	c := randToken(32)
