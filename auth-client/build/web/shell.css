@@ -138,14 +138,20 @@ body {
 /* ── LOGIN SCREEN ────────────────────────────────────────────────────── */
 
 .login-screen {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 24px 24px 20px;
+}
+
+/* card sits in the top flex zone, centered within it */
+.login-card-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 24px;
-  padding-bottom: 6vh; /* nudge content upward to match reference */
-  gap: 24px;
+  width: 100%;
 }
 
 .login-card {
@@ -210,8 +216,7 @@ body {
   font-size: 13px;
   line-height: 1.8;
   color: var(--text-dim);
-  /* 64px + 24px flex gap = 88px total — same position as when chevron was present */
-  margin-top: 64px;
+  padding-bottom: 20px;
 }
 
 /* ── DIVIDER ─────────────────────────────────────────────────────────── */
@@ -221,8 +226,6 @@ body {
   max-width: 380px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 24px;
 }
 
 .login-divider::before,
@@ -234,11 +237,13 @@ body {
 }
 
 .login-divider-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   border: 1px solid var(--border);
+  background: transparent;
   flex-shrink: 0;
+  margin: 0 -1px; /* lines run flush to circle edge */
 }
 
 /* ── APP CONTENT ─────────────────────────────────────────────────────── */
