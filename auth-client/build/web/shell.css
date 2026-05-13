@@ -45,16 +45,23 @@ body {
   -webkit-backdrop-filter: blur(16px);
 }
 
+/* icon variant:
+.tab {
+  padding: 0 6px;
+}
+*/
+
 .tab {
   background: transparent;
   border: none;
   border-radius: 20px;
   min-width: 44px;
   height: 44px;
-  padding: 0 6px;
+  padding: 0 18px;
   color: var(--text-dim);
   font-family: inherit;
   font-size: 14px;
+  white-space: nowrap;
   cursor: pointer;
   transition: background .15s, color .15s;
 }
