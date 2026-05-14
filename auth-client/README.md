@@ -88,10 +88,11 @@ https://raw.githubusercontent.com/USER/REPO/main/auth-client/build/web/icon.png
 
 ## Локальная разработка
 
+Hot-reload через Air:
 ```bash
 cd auth-client
 cp .env.example .env   # заполнить переменные
-docker-compose up client
+docker-compose -f dev-compose.yml up --remove-orphans
 ```
 
 Сервис доступен на `http://localhost:8890`.
@@ -100,7 +101,7 @@ docker-compose up client
 
 ```bash
 cd auth-client
-docker-compose run --rm release
+docker-compose -f prod-compose.yml run --rm release
 ```
 
 Бинарь окажется в `bin/auth-client`.

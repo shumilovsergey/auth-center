@@ -2,25 +2,24 @@
 
 ## Local dev
 
-Hot-reload via `go run`:
+Hot-reload via Air:
 ```bash
-docker-compose up auth
+docker-compose -f dev-compose.yml up --remove-orphans
 ```
 
-Force rebuild (after adding a dependency or changing the Dockerfile):
+Force rebuild (after changing the Dockerfile):
 ```bash
-docker-compose up --build auth
+docker-compose -f dev-compose.yml up --build --remove-orphans
 ```
 
 ## Production binary (linux/amd64)
 
 Build and copy binary to `bin/`:
 ```bash
-docker-compose run --rm release
+docker-compose -f prod-compose.yml run --rm release
 ```
 
 Force rebuild from scratch (no Docker cache):
 ```bash
-docker-compose build --no-cache release && docker-compose run --rm release
+docker-compose -f prod-compose.yml build --no-cache release && docker-compose -f prod-compose.yml run --rm release
 ```
-
