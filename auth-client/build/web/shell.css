@@ -36,13 +36,13 @@ body {
 .nav-tabs {
   display: flex;
   align-items: center;
-  background: rgba(17, 17, 32, 0.94);
-  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 28px;
   padding: 5px;
   gap: 2px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
 /* icon variant:
@@ -58,7 +58,7 @@ body {
   min-width: 44px;
   height: 44px;
   padding: 0 18px;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.40);
   font-family: inherit;
   font-size: 14px;
   white-space: nowrap;
@@ -66,8 +66,8 @@ body {
   transition: background .15s, color .15s;
 }
 
-.tab:hover { color: var(--text); }
-.tab.active { background: var(--border); color: var(--accent); }
+.tab:hover { color: rgba(255, 255, 255, 0.75); }
+.tab.active { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92); }
 
 .profile-area { position: relative; }
 
@@ -75,9 +75,9 @@ body {
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: rgba(17, 17, 32, 0.94);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.50);
+  color: rgba(255, 255, 255, 0.88);
   font-family: inherit;
   font-size: 18px;
   font-weight: 600;
@@ -86,70 +86,84 @@ body {
   justify-content: center;
   cursor: pointer;
   text-decoration: none;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 2px 12px rgba(0, 0, 0, 0.4);
   transition: border-color .15s, color .15s;
 }
 
 .profile-btn:hover,
-.profile-btn.open { border-color: var(--border-active); color: var(--accent); }
+.profile-btn.open { border-color: rgba(255, 255, 255, 0.80); color: rgba(255, 255, 255, 1); }
 
 .profile-popover {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
   width: 256px;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   padding: 14px;
   z-index: 101;
   display: none;
   flex-direction: column;
   gap: 8px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
 .profile-popover.open { display: flex; }
 
 .pi-info { display: flex; flex-direction: column; gap: 3px; }
-.pi-label { font-size: 10px; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; }
-.pi-name  { color: var(--accent); word-break: break-all; }
-.pi-sub   { font-size: 11px; color: var(--text-dim); word-break: break-all; }
+.pi-label { font-size: 10px; color: rgba(255, 255, 255, 0.45); letter-spacing: .1em; text-transform: uppercase; }
+.pi-name  { color: rgba(255, 255, 255, 0.92); word-break: break-all; }
+.pi-sub   { font-size: 11px; color: rgba(255, 255, 255, 0.45); word-break: break-all; }
 
 .pi-meta {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
   padding-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: 11px;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.40);
 }
 
 .pi-action {
   display: block;
   padding: 9px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.50);
   border-radius: 10px;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.88);
   text-decoration: none;
   font-size: 12px;
-  transition: border-color .15s, color .15s;
+  transition: border-color .15s, color .15s, background .15s;
 }
 
-.pi-action:hover  { border-color: var(--border-active); color: var(--text); }
-.pi-logout:hover  { border-color: #5c2e2e; color: #e87a7a; }
+.pi-action:hover  { border-color: rgba(255, 255, 255, 0.80); color: rgba(255, 255, 255, 1); }
+
+.pi-logout { color: #ff9f9f; border-color: #a03030; }
+.pi-logout:hover  { color: #ffbfbf; border-color: #cc4040; background: rgba(255, 80, 80, 0.12); }
 
 /* ── LOGIN SCREEN ────────────────────────────────────────────────────── */
 
 .login-screen {
+  position: relative;
+  overflow: hidden;
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 24px 24px 20px;
+}
+
+.login-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* card sits in the top flex zone, centered within it */
@@ -159,11 +173,15 @@ body {
   align-items: center;
   justify-content: center;
   width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .login-card {
-  background: var(--card);
-  border: 1.5px solid var(--border-active);
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
   border-radius: 16px;
   padding: 44px 40px 36px;
   width: 100%;
@@ -179,14 +197,15 @@ body {
   font-size: 28px;
   font-weight: 700;
   letter-spacing: .16em;
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   text-transform: uppercase;
   margin-bottom: 10px;
 }
 
 .login-domain {
   font-size: 12px;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.40);
   text-decoration: none;
   letter-spacing: .04em;
   margin-bottom: 36px;
@@ -194,17 +213,17 @@ body {
   display: block;
 }
 
-.login-domain:hover { color: var(--text); }
+.login-domain:hover { color: rgba(255, 255, 255, 0.75); }
 
 .login-btn {
   display: block;
   width: 100%;
   padding: 14px;
   margin-bottom: 0;
-  background: var(--bg);
-  border: 1.5px solid var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.88);
   font-family: inherit;
   font-size: 14px;
   text-align: center;
@@ -213,22 +232,27 @@ body {
   transition: background .15s, border-color .15s;
 }
 
-.login-btn:hover { background: #161622; border-color: var(--border-active); }
+.login-btn:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.38); }
 
 /* ── APP DESCRIPTION ─────────────────────────────────────────────────── */
 
 .app-about {
+  position: relative;
+  z-index: 2;
   max-width: 380px;
   text-align: center;
   font-size: 13px;
   line-height: 1.8;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.40);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   padding-bottom: 20px;
 }
 
 /* ── DIVIDER ─────────────────────────────────────────────────────────── */
 
 .login-divider {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 380px;
   display: flex;
@@ -240,14 +264,14 @@ body {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .login-divider-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   background: transparent;
   flex-shrink: 0;
   margin: 0 -1px; /* lines run flush to circle edge */
