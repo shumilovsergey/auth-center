@@ -19,13 +19,14 @@
 }
 
 #bg {
-  position: absolute;
+  position: fixed;
   inset: -10%;
-  background-image: url('background.webp');
+  background-image: url('data:image/webp;base64,<base64>');  /* inline — no extra HTTP request */
   background-size: cover;
   background-position: center;
-  filter: blur(40px) brightness(0.9);
+  filter: blur(40px) brightness(0.75);
   transform: scale(1.1);
+  z-index: -1;
 }
 
 #content {
@@ -41,10 +42,26 @@
 - `overflow: hidden` on parent — clips the oversized div
 - `background: #000` on parent — fallback color when no image is set
 
-## Swap the image from JS
+## Inline the image (recommended — no extra HTTP request)
+
+Since the background is blurred, quality doesn't matter. Inline it as base64 directly in CSS:
+
+```bash
+base64 -i background.webp | tr -d '\n'
+```
+
+Paste the output into `app.css`:
+
+```css
+background-image: url('data:image/webp;base64,<paste here>');
+```
+
+No route needed in the server. The image arrives with the CSS, zero delay.
+
+## Swap the image from JS (if needed)
 
 ```js
-document.getElementById('bg').style.backgroundImage = "url('background.webp')";
+document.getElementById('bg').style.backgroundImage = "url('data:image/webp;base64,<base64>')";
 ```
 
 To clear it (show plain dark background):
