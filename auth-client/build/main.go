@@ -118,7 +118,7 @@ func main() {
 	mux.Handle("GET /shell.js", fileServer)
 	mux.Handle("GET /app.css", fileServer)
 	mux.Handle("GET /app.js", fileServer)
-	mux.Handle("GET /background.jpg", fileServer)
+	mux.Handle("GET /background.webp", fileServer)
 
 	port := os.Getenv("PORT")
 	if port == "" {

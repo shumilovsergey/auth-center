@@ -21,7 +21,7 @@
 #bg {
   position: absolute;
   inset: -10%;
-  background-image: url('background.jpg');
+  background-image: url('background.webp');
   background-size: cover;
   background-position: center;
   filter: blur(40px) brightness(0.9);
@@ -44,7 +44,7 @@
 ## Swap the image from JS
 
 ```js
-document.getElementById('bg').style.backgroundImage = "url('background.jpg')";
+document.getElementById('bg').style.backgroundImage = "url('background.webp')";
 ```
 
 To clear it (show plain dark background):

@@ -8,7 +8,7 @@ body { background: transparent; }
 #bg {
   position: fixed;
   inset: -10%;
-  background-image: url('/background.jpg');
+  background-image: url('/background.webp');
   background-size: cover;
   background-position: center;
   filter: blur(40px) brightness(0.75);
