@@ -51,7 +51,7 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Ty
 ```bash
 cd auth-center
 cp .env.example .env   # заполнить переменные
-docker-compose up auth
+docker-compose -f dev-compose.yml up auth
 ```
 
 Сервис доступен на `http://localhost:8886`. Горячая перезагрузка при изменении файлов в `build/`.
@@ -60,7 +60,7 @@ docker-compose up auth
 
 ```bash
 cd auth-center
-docker-compose run --rm release
+docker-compose -f prod-compose.yml run --rm release
 ```
 
 Бинарь окажется в `bin/auth-center`.

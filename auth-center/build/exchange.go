@@ -13,6 +13,7 @@ import (
 type Code struct {
 	User      map[string]any
 	Method    string
+	Via       string // transport marker, e.g. "delegate"; empty for first-party logins
 	CreatedAt time.Time
 }
 
@@ -34,10 +35,16 @@ func cleanCodes() {
 // newCode issues a one-time code for a verified user. Any trusted app can
 // redeem it via POST /exchange.
 func newCode(user map[string]any, method string) string {
+	return newCodeVia(user, method, "")
+}
+
+// newCodeVia is like newCode but records a transport marker (e.g. "delegate")
+// alongside the real identity provider in method.
+func newCodeVia(user map[string]any, method, via string) string {
 	cleanCodes()
 	c := randToken(32)
 	codesMu.Lock()
-	codes[c] = &Code{User: user, Method: method, CreatedAt: time.Now()}
+	codes[c] = &Code{User: user, Method: method, Via: via, CreatedAt: time.Now()}
 	codesMu.Unlock()
 	return c
 }
@@ -79,9 +86,14 @@ func handleExchange(w http.ResponseWriter, r *http.Request) {
 	}
 	user := entry.User
 	method := entry.Method
+	via := entry.Via
 	delete(codes, body.Code)
 	codesMu.Unlock()
 
-	log.Printf("exchange method=%s user=%v", method, user)
-	jsonOK(w, map[string]any{"ok": true, "user": user, "method": method})
+	log.Printf("exchange method=%s via=%s user=%v", method, via, user)
+	resp := map[string]any{"ok": true, "user": user, "method": method}
+	if via != "" {
+		resp["via"] = via
+	}
+	jsonOK(w, resp)
 }

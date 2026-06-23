@@ -27,7 +27,7 @@ VPS-1 (auth)  →  VPS-2 (auth-proxy /tg-api/*)  →  Telegram API
 ```bash
 cd auth-proxy
 cp .env.example .env   # заполнить AUTH_CENTER_URL
-docker-compose up proxy
+docker-compose -f dev-compose.yml up proxy
 ```
 
 ---
@@ -36,7 +36,7 @@ docker-compose up proxy
 
 ```bash
 cd auth-proxy
-docker-compose run --rm release
+docker-compose -f prod-compose.yml run --rm release
 ```
 
 Бинарь окажется в `bin/auth-proxy`. Скопировать на VPS-2.

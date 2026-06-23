@@ -13,8 +13,12 @@ import (
 // the code via POST /exchange — no target binding needed since all apps are trusted.
 func handleDelegate(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		UserID   string `json:"user_id"`
-		AppToken string `json:"app_token"`
+		UserID    string `json:"user_id"`
+		AppToken  string `json:"app_token"`
+		Method    string `json:"method"`     // original identity provider (google/telegram/solana)
+		Name      string `json:"name"`       // display name (Google style)
+		FirstName string `json:"first_name"` // Telegram/Solana style
+		LastName  string `json:"last_name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr(w, "no data", http.StatusBadRequest)
@@ -30,8 +34,27 @@ func handleDelegate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Echo the delegating app's identity back so the receiving app shows the real
+	// provider + name (auth-center is stateless and stores no profile of its own).
+	// method is the true provider; "delegate" is recorded separately as the transport
+	// via the Via marker so the name/provider paths in client templates keep working.
 	user := map[string]any{"id": body.UserID}
-	code := newCode(user, "delegate")
-	log.Printf("delegate user_id=%s", body.UserID)
+	if body.Name != "" {
+		user["name"] = body.Name
+	}
+	if body.FirstName != "" {
+		user["first_name"] = body.FirstName
+	}
+	if body.LastName != "" {
+		user["last_name"] = body.LastName
+	}
+
+	method := body.Method
+	if method == "" {
+		method = "delegate" // backward compat: caller that sends no provider
+	}
+
+	code := newCodeVia(user, method, "delegate")
+	log.Printf("delegate user_id=%s method=%s", body.UserID, method)
 	jsonOK(w, map[string]string{"code": code})
 }

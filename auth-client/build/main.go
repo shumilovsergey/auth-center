@@ -114,6 +114,7 @@ func main() {
 	mux.HandleFunc("GET /logout", handleLogout)
 	mux.HandleFunc("GET /open-food-scanner", handleOpenFoodScanner)
 	mux.Handle("GET /favicon.svg", fileServer)
+	mux.Handle("GET /background.webp", fileServer)
 	mux.Handle("GET /shell.css", fileServer)
 	mux.Handle("GET /shell.js", fileServer)
 	mux.Handle("GET /app.css", fileServer)

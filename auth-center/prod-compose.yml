@@ -5,4 +5,17 @@ services:
       target: builder
     volumes:
       - ./bin:/out
-    entrypoint: ["cp", "/auth-center", "/out/auth-center"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cp /auth-center /out/auth-center
+        printf "\033[1;32m\n"
+        printf "  ╔══════════════════════════════════╗\n"
+        printf "  ║      AUTH-CENTER PROD BUILD       ║\n"
+        printf "  ║  Built: %-25s║\n" "$(/out/auth-center --version | sed 's/auth-center built: //')"
+        printf "  ╚══════════════════════════════════╝\n"
+        printf "\033[0m\n"
+
+
+# docker compose -f prod-compose.yml build --no-cache && docker compose -f prod-compose.yml up

@@ -2,8 +2,13 @@ CLAUDE.md
 .claude
 ./claude
 
-.DS_Store
+*.DS_Store
 
 .backup
 *.db
 .env
+
+# Air hot-reload work dir (build-errors.log etc.)
+**/build/tmp/
+auth-center/auth-center.md
+auth-client/template.md

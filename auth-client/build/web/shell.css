@@ -1,12 +1,16 @@
 :root {
   --bg: #0c0c12;
   --card: #111120;
-  --border: #252340;
-  --border-active: #7c68d0;
-  --text: #b0b0cc;
-  --text-dim: #42405e;
-  --accent: #a78bfa;
-  --neon: #c4b5fd;
+  --border:        rgba(255, 255, 255, 0.14);
+  --border-active: rgba(255, 255, 255, 0.42);
+  --text:          rgba(255, 255, 255, 0.82);
+  --text-dim:      rgba(255, 255, 255, 0.45);
+  --accent:        rgba(255, 255, 255, 0.95);
+  --neon:          #ffffff;
+
+  --ok:   #4ade80;   /* online  */
+  --warn: #fbbf24;   /* partial */
+  --bad:  #f87171;   /* offline / error */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -132,18 +136,25 @@ body {
 .pi-action {
   display: block;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.50);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
   border-radius: 10px;
   color: rgba(255, 255, 255, 0.88);
   text-decoration: none;
   font-size: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: border-color .15s, color .15s, background .15s;
 }
 
-.pi-action:hover  { border-color: rgba(255, 255, 255, 0.80); color: rgba(255, 255, 255, 1); }
+.pi-action:hover {
+  border-color: var(--border-active);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
 
-.pi-logout { color: #ff9f9f; border-color: #a03030; }
-.pi-logout:hover  { color: #ffbfbf; border-color: #cc4040; background: rgba(255, 80, 80, 0.12); }
+.pi-logout { color: #ff9f9f; border-color: rgba(248, 113, 113, 0.4); }
+.pi-logout:hover  { color: #ffbfbf; border-color: rgba(248, 113, 113, 0.7); background: rgba(248, 113, 113, 0.12); }
 
 /* ── LOGIN SCREEN ────────────────────────────────────────────────────── */
 
@@ -220,8 +231,8 @@ body {
   width: 100%;
   padding: 14px;
   margin-bottom: 0;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
   border-radius: 10px;
   color: rgba(255, 255, 255, 0.88);
   font-family: inherit;
@@ -229,10 +240,16 @@ body {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .15s, border-color .15s, color .15s;
 }
 
-.login-btn:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.38); }
+.login-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-active);
+  color: rgba(255, 255, 255, 0.95);
+}
 
 /* ── APP DESCRIPTION ─────────────────────────────────────────────────── */
 

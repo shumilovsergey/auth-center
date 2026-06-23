@@ -35,6 +35,6 @@ systemctl enable --now auth-client
 
 ## Dev flow
 
-Локальная разработка — `docker-compose up` (горячая перезагрузка через `go run`).
+Локальная разработка — `docker-compose -f dev-compose.yml up` (горячая перезагрузка через `go run`).
 
-Продакшн-бинарь собирается через `docker-compose run --rm release` и коммитится в git. На сервере нет сборки — только `git pull` и рестарт сервиса.
+Продакшн-бинарь собирается через `docker-compose -f prod-compose.yml run --rm release` и коммитится в git. На сервере нет сборки — только `git pull` и рестарт сервиса.

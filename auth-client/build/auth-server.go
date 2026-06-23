@@ -19,10 +19,21 @@ func delegateCode(uid int64) (string, error) {
 	if err != nil || user == nil {
 		return "", fmt.Errorf("user not found")
 	}
-	body, _ := json.Marshal(map[string]string{
+	// Pass our stored identity through so the receiving app shows the real provider
+	// and name (auth-center is stateless and keeps no profile to echo back).
+	// We only store a single collapsed Name, so mirror it into first_name as well:
+	// the receiving template's extractName reads user.name for Google but joins
+	// first_name/last_name for Telegram/Solana.
+	payload := map[string]string{
 		"user_id":   user.AuthID,
 		"app_token": appToken,
-	})
+		"method":    user.Method,
+	}
+	if user.Name != "" {
+		payload["name"] = user.Name
+		payload["first_name"] = user.Name
+	}
+	body, _ := json.Marshal(payload)
 	resp, err := httpClient.Post(authInternal+"/delegate", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("delegate: %w", err)

@@ -157,12 +157,12 @@ Add a link in the UI:
 
 **Local dev** (hot-reload via `go run`):
 ```bash
-docker-compose up auth
+docker-compose -f dev-compose.yml up client
 ```
 
 **Production binary** (linux/amd64, committed to git):
 ```bash
-docker-compose run --rm release
+docker-compose -f prod-compose.yml run --rm release
 ```
 
 The binary is committed. The server does `git pull` + `systemctl restart`. No build step on the server.
