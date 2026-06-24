@@ -1,4 +1,4 @@
-← [telegram-auth](../README.md)
+[<- Назад](/README.md)
 
 # auth-center
 

@@ -1,4 +1,6 @@
-← [auth-center](../README.md)
+[<- Назад](/README.md)
+
+![baner](/auth-center/tools/baner-proxy.png)
 
 # auth-proxy
 
