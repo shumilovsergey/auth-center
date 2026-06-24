@@ -9,6 +9,7 @@ build/
   solana.go    — Solana wallet auth (nonce store, signature verification)
   google.go    — Google OAuth (state store, login redirect, callback)
   exchange.go  — one-time code store + /exchange endpoint
+  delegate.go  — /delegate endpoint: trusted app issues a cross-app login code
   web/
     RULES.md
     favicon.svg
@@ -45,6 +46,10 @@ Each provider owns its own in-memory store, TTL cleanup, and handlers. Shared ut
 5. Call `newCode(user, "<provider>")` on successful auth to issue a one-time code
 6. Add a tile + flow to `web/index.html` and `web/script.js`
 
+> Cross-app login (`delegate.go`) issues codes via `newCodeVia(user, method, "delegate")`,
+> which records a `Via` transport marker on the code alongside the real provider in `method`.
+> `/exchange` echoes `via` back in its response when set; first-party logins leave it empty.
+
 ---
 
 ## Logging
@@ -55,8 +60,10 @@ One line per auth event. Format: `key=value` pairs.
 telegram uid=123456 name="Ivan Petrov"
 solana pubkey=5ZX8wKF...
 google sub=117... email=ivan@gmail.com
-exchange method=telegram user=map[...]
+exchange method=telegram via= user=map[...]
 exchange error=unauthorized from=1.2.3.4
+delegate user_id=123456 method=google
+delegate error=unauthorized from=1.2.3.4
 ```
 
 Rules:

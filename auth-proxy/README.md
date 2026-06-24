@@ -11,16 +11,12 @@ Telegram      →  VPS-2 (auth-proxy /webhook)   →  VPS-1 (auth-center)
 VPS-1 (auth)  →  VPS-2 (auth-proxy /tg-api/*)  →  Telegram API
 ```
 
----
-
 ## Переменные окружения
 
 | Переменная | Обязательно | Описание |
 |---|:---:|---|
 | `AUTH_CENTER_URL` | ★ | Базовый URL auth-center, например `https://auth-center.sh-development.ru` |
 | `PORT` | | Порт сервера (по умолчанию `8080`) |
-
----
 
 ## Локальная разработка
 
@@ -30,8 +26,6 @@ cp .env.example .env   # заполнить AUTH_CENTER_URL
 docker-compose -f dev-compose.yml up proxy
 ```
 
----
-
 ## Сборка продакшн-бинаря (linux/amd64)
 
 ```bash
@@ -40,8 +34,6 @@ docker-compose -f prod-compose.yml run --rm release
 ```
 
 Бинарь окажется в `bin/auth-proxy`. Скопировать на VPS-2.
-
----
 
 ## Деплой на VPS-2
 
@@ -56,8 +48,6 @@ systemctl enable --now auth-proxy
 ```
 
 5. Настроить nginx — SSL-терминация и проксирование на `127.0.0.1:8080`
-
----
 
 ## Перенаправить webhook Telegram
 
@@ -74,8 +64,6 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 ```bash
 curl "https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo"
 ```
-
----
 
 ## Проверка работы прокси
 
@@ -99,8 +87,6 @@ curl -X POST "https://<proxy-domain>/tg-api/bot<BOT_TOKEN>/getMe"
 ```bash
 curl "https://<proxy-domain>/health"
 ```
-
----
 
 ## Эндпоинты
 

@@ -2,11 +2,11 @@
 
 # auth-center
 
+![baner](/auth-center/tools/baner-center.png)
+
 Сервер аутентификации. Принимает пользователя, проверяет личность через auth провайдер , выдаёт одноразовый код приложению.
 
 Stateless — нет базы данных, нет хранения сессий между запросами.
-
----
 
 ## Переменные окружения
 
@@ -23,7 +23,7 @@ Stateless — нет базы данных, нет хранения сессий
 | `GOOGLE_CLIENT_SECRET` | | Client Secret из Google Cloud Console |
 | `GOOGLE_CALLBACK_URL` | | Полный URL callback'а, должен совпадать с настройкой в Google Cloud (`https://your-domain/google/callback`) |
 
-### Где получить токены
+## Где получить токены
 
 **Telegram**
 1. [@BotFather](https://t.me/BotFather) → `/newbot` → скопировать `BOT_TOKEN`
@@ -43,8 +43,6 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Ty
 
 **APP_TOKENS**
 Придумать произвольные строки — по одной на каждое приложение, которое будет использовать auth-center. Те же строки прописать как `APP_TOKEN` в настройках каждого приложения.
-
----
 
 ## Локальная разработка
 
@@ -75,9 +73,7 @@ systemctl daemon-reload
 systemctl enable --now auth-center
 ```
 
----
-
-## Подключение приложения
+## Локальная разработка приложения против прод auth-center
 
 Если auth-center уже развёрнут в проде, а приложение разрабатывается локально — ничего дополнительно поднимать не нужно.
 
@@ -95,9 +91,6 @@ APP_TOKEN=local-dev-secret                   # произвольная стро
 **Добавить токен в прод auth-center:**
 
 В переменную `APP_TOKENS` на проде добавить `local-dev-secret` через запятую, перезапустить сервис.
-
-
----
 
 ## Подключение приложения
 
@@ -159,3 +152,11 @@ Content-Type: application/json
 Auth-center не помнит пользователя — это задача приложения. Сохранить `user.id` и `method` в сессию.
 
 `user.id` — постоянный уникальный идентификатор.
+
+## Cross-app login (delegate)
+
+Залогиненный пользователь приложения A может открыть приложение B без повторной аутентификации. Приложение A запрашивает одноразовый код через `POST /delegate` и редиректит браузер на `https://<app-B>/?code=<code>`, где B обменивает код обычным `POST /exchange`.
+
+Так как auth-center stateless и не хранит профиль, приложение A обязано переслать `method` + имя (`name` / `first_name` / `last_name`) в теле `/delegate` — иначе B покажет только id и «no name».
+
+Полная спецификация для разработчиков: [`tools/delegate.md`](tools/delegate.md).

@@ -8,16 +8,18 @@ Rules for building apps on top of this template.
 
 ```
 build/
-  main.go        — server setup, config loading, app routes
-  auth-human.go  — auth-center integration, JWT, cookies, middleware  ← do not edit
+  main.go        — server setup, config loading, app routes           ← edit this
+  auth-human.go  — /login, /logout, handleCallback, JWT, requireAuth  ← do not edit
+  auth-server.go — server-to-server calls to auth-center (delegateCode) ← do not edit
   db.go          — SQLite init, users table, core queries              ← do not edit
   app_db.go      — app-specific migrations                            ← edit this
   web/
     RULES.md
     favicon.svg
     index.html
-    style.css
-    script.js
+    shell.css / shell.js  — shared chrome (navbar, profile popover)   ← do not edit
+    app.css / app.js      — app-specific styles and logic             ← edit these
+    background.webp
 ```
 
 
