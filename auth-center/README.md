@@ -2,7 +2,7 @@
 
 # auth-center
 
-![baner](/auth-center/tools/baner-center.png)
+![baner](/auth-center/tools/baner-center.webp)
 
 Сервер аутентификации. Принимает пользователя, проверяет личность через auth провайдер , выдаёт одноразовый код приложению.
 

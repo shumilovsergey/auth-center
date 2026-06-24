@@ -1,6 +1,6 @@
 [<- Назад](/README.md)
 
-![baner](/auth-center/tools/baner-proxy.png)
+![baner](/auth-center/tools/baner-proxy.webp)
 
 # auth-proxy
 

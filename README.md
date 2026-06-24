@@ -1,6 +1,6 @@
 # auth-center
 
-![baner](/auth-center/tools/baner.png)
+![baner](/auth-center/tools/baner.webp)
 
 Централизованный сервис аутентификации. Приложение перенаправляет пользователя на auth-center, тот проверяет личность и возвращает одноразовый код, приложение меняет код на данные пользователя через server-to-server вызов.
 

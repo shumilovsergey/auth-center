@@ -2,7 +2,7 @@
 
 # auth-client
 
-![baner](/auth-center/tools/baner-client.png)
+![baner](/auth-center/tools/baner-client.webp)
 
 Демо-клиент и референсная реализация подключения к auth-center. Показывает полный цикл аутентификации: редирект → получение code → обмен на данные пользователя → сессия.
 
