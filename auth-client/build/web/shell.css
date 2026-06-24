@@ -123,38 +123,38 @@ body {
 .pi-name  { color: rgba(255, 255, 255, 0.92); word-break: break-all; }
 .pi-sub   { font-size: 11px; color: rgba(255, 255, 255, 0.45); word-break: break-all; }
 
-.pi-meta {
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
-  padding-top: 8px;
+/* grouped action list: ONE rounded box, rows divided by hairlines */
+.pi-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .pi-action {
   display: block;
-  padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: rgba(255, 255, 255, 0.88);
   text-decoration: none;
-  font-size: 12px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color .15s, color .15s, background .15s;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
 }
 
-.pi-action:hover {
-  border-color: var(--border-active);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.95);
-}
+/* divider only BETWEEN rows, never on the first one */
+.pi-action + .pi-action { border-top: 1px solid rgba(255, 255, 255, 0.10); }
 
-.pi-logout { color: #ff9f9f; border-color: rgba(248, 113, 113, 0.4); }
-.pi-logout:hover  { color: #ffbfbf; border-color: rgba(248, 113, 113, 0.7); background: rgba(248, 113, 113, 0.12); }
+.pi-action:hover { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.95); }
+
+.pi-logout       { color: #ff9f9f; }
+.pi-logout:hover { color: #ffbfbf; background: rgba(255, 80, 80, 0.12); }
 
 /* ── LOGIN SCREEN ────────────────────────────────────────────────────── */
 

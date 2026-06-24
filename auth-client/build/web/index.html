@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>auth-client</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" href="/background.webp" as="image" fetchpriority="high" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="auth-client" />
   <link rel="stylesheet" href="/shell.css" />
@@ -41,12 +42,11 @@
         <span class="pi-name">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.AuthID}}{{end}}</span>
         {{if .User.Name}}<span class="pi-sub">{{.User.AuthID}}</span>{{end}}
       </div>
-      <div class="pi-meta">
-        <span>member since {{.User.CreatedAt.Format "2006-01-02"}}</span>
-        <span>last login {{.User.LastLogin.Format "2006-01-02 15:04 UTC"}}</span>
+      <div class="pi-list">
+        <a class="pi-action" href="/apps">apps</a>
+        <a class="pi-action" href="https://github.com/shumilovsergey/auth-center/blob/main/README.md" target="_blank" rel="noopener">readme</a>
+        <a class="pi-action pi-logout" href="/logout">log out</a>
       </div>
-      <a class="pi-action" href="/open-food-scanner">Food Scanner</a>
-      <a class="pi-action pi-logout" href="/logout">log out</a>
     </div>
   </div>
 </nav>

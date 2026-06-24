@@ -61,6 +61,14 @@ func logMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// cacheStatic wraps a handler with a 30-day immutable cache header.
+func cacheStatic(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=2592000") // 30 days
+		h.ServeHTTP(w, r)
+	})
+}
+
 // ── app routes ────────────────────────────────────────────────────────────────
 // Add your app-specific handlers here.
 
@@ -112,9 +120,9 @@ func main() {
 	mux.HandleFunc("GET /", handleIndex)
 	mux.HandleFunc("GET /login", handleLogin)
 	mux.HandleFunc("GET /logout", handleLogout)
-	mux.HandleFunc("GET /open-food-scanner", handleOpenFoodScanner)
+	mux.HandleFunc("GET /apps", handleOpenApps)
 	mux.Handle("GET /favicon.svg", fileServer)
-	mux.Handle("GET /background.webp", fileServer)
+	mux.Handle("GET /background.webp", cacheStatic(fileServer))
 	mux.Handle("GET /shell.css", fileServer)
 	mux.Handle("GET /shell.js", fileServer)
 	mux.Handle("GET /app.css", fileServer)

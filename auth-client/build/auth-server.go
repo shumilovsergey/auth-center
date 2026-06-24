@@ -50,7 +50,9 @@ func delegateCode(uid int64) (string, error) {
 	return data.Code, nil
 }
 
-func handleOpenFoodScanner(w http.ResponseWriter, r *http.Request) {
+// handleOpenApps delegates the logged-in identity to the central menu app and
+// redirects the browser there with a one-time code (the "apps" menu button).
+func handleOpenApps(w http.ResponseWriter, r *http.Request) {
 	uid := sessionUserID(r)
 	if uid == 0 {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -58,9 +60,9 @@ func handleOpenFoodScanner(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := delegateCode(uid)
 	if err != nil {
-		log.Printf("open-food-scanner uid=%d error=%v", uid, err)
+		log.Printf("open-apps uid=%d error=%v", uid, err)
 		http.Error(w, "could not open app", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "https://food-scaner.sh-development.ru/?code="+code, http.StatusFound)
+	http.Redirect(w, r, "https://menu.sh-development.ru/?code="+code, http.StatusFound)
 }
