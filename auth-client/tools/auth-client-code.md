@@ -14,13 +14,13 @@ build/
   db.go          — SQLite init, users table, core queries              ← do not edit
   app_db.go      — app-specific migrations                            ← edit this
   web/
-    RULES.md
-    favicon.svg
-    index.html
-    shell.css / shell.js  — shared chrome (navbar, profile popover)   ← do not edit
-    app.css / app.js      — app-specific styles and logic             ← edit these
-    background.webp
+    index.html   — Go template: {{if .User}} navbar / {{else}} login  ← edit this
+    style.css    — all styles (sectioned: BASE · NAVBAR · LOGIN · APP) ← edit APP section
+    script.js    — all client logic (profile popover, tabs, app logic) ← edit App logic section
+    favicon.svg / background.webp                                      ← swap per app
 ```
+
+The `web/` folder is just three source files. Shared chrome (navbar, profile popover, login screen) and your app-specific code live together in the same files, separated by labeled sections — build inside the `APP` section of `style.css` and the `App logic` section of `script.js`. All three are embedded into the binary via `//go:embed web` and served as explicit `GET` routes in `main.go`.
 
 
 **`app_db.go`** is the entry point for app-specific database work. Add your tables in `appMigrate()`. It is called automatically on startup after the core `users` table is ready.

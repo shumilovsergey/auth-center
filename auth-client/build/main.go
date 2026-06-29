@@ -123,10 +123,8 @@ func main() {
 	mux.HandleFunc("GET /apps", handleOpenApps)
 	mux.Handle("GET /favicon.svg", fileServer)
 	mux.Handle("GET /background.webp", cacheStatic(fileServer))
-	mux.Handle("GET /shell.css", fileServer)
-	mux.Handle("GET /shell.js", fileServer)
-	mux.Handle("GET /app.css", fileServer)
-	mux.Handle("GET /app.js", fileServer)
+	mux.Handle("GET /style.css", fileServer)
+	mux.Handle("GET /script.js", fileServer)
 
 	port := os.Getenv("PORT")
 	if port == "" {
