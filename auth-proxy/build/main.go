@@ -70,10 +70,21 @@ func main() {
 		port = "8080"
 	}
 
+	grafanaBotToken = os.Getenv("GRAFANA_BOT_TOKEN")
+	grafanaChatID = os.Getenv("GRAFANA_CHAT_ID")
+	grafanaAlertSecret = os.Getenv("GRAFANA_ALERT_SECRET")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /webhook", handleWebhook)
 	mux.HandleFunc("POST /tg-api/{path...}", handleTelegramAPI)
 	mux.HandleFunc("GET /health", handleHealth)
+
+	if grafanaBotToken != "" && grafanaChatID != "" && grafanaAlertSecret != "" {
+		mux.HandleFunc("POST /alert", handleGrafanaAlert)
+		log.Printf("grafana alerts enabled chat_id=%s", grafanaChatID)
+	} else {
+		log.Printf("grafana alerts disabled (set GRAFANA_BOT_TOKEN, GRAFANA_CHAT_ID, GRAFANA_ALERT_SECRET)")
+	}
 
 	log.Printf("listening on :%s upstream=%s", port, authCenterURL)
 	log.Fatal(http.ListenAndServe(":"+port, logMiddleware(mux)))

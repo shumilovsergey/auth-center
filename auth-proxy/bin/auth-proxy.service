@@ -10,6 +10,11 @@ WorkingDirectory=
 Environment=PORT=8080
 Environment=AUTH_CENTER_URL=
 
+# Grafana → Telegram alerts (optional; /alert enabled only when all three are set)
+Environment=GRAFANA_BOT_TOKEN=
+Environment=GRAFANA_CHAT_ID=
+Environment=GRAFANA_ALERT_SECRET=
+
 Restart=always
 RestartSec=5
 
