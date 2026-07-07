@@ -20,6 +20,7 @@ build/
 | `POST` | `/webhook` | Telegram secret header (passed through) | Forward incoming Telegram updates to auth-center |
 | `POST` | `/tg-api/{path...}` | none (obscure internal path) | Forward outbound Telegram API calls to `api.telegram.org` |
 | `POST` | `/alert` | `Authorization: Bearer <GRAFANA_ALERT_SECRET>` | Relay a Grafana webhook to Telegram as a chat message |
+| `GET`  | `/` | none | Root liveness (exact match `/{$}`); deploy healthcheck probes this. Same body as `/health` |
 | `GET`  | `/health` | none | Liveness; returns `{"status":"ok","upstream":<AUTH_CENTER_URL>}` |
 
 ### `POST /webhook`

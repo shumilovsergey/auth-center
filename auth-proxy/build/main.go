@@ -77,6 +77,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /webhook", handleWebhook)
 	mux.HandleFunc("POST /tg-api/{path...}", handleTelegramAPI)
+	mux.HandleFunc("GET /{$}", handleHealth) // root — deploy healthcheck probes GET /
 	mux.HandleFunc("GET /health", handleHealth)
 
 	if grafanaBotToken != "" && grafanaChatID != "" && grafanaAlertSecret != "" {
