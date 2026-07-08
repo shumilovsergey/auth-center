@@ -74,6 +74,9 @@ func main() {
 	grafanaChatID = os.Getenv("GRAFANA_CHAT_ID")
 	grafanaAlertSecret = os.Getenv("GRAFANA_ALERT_SECRET")
 
+	anthropicAPIKey = os.Getenv("ANTHROPIC_API_KEY")
+	nomNomSecret = os.Getenv("NOM_NOM_SECRET")
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /webhook", handleWebhook)
 	mux.HandleFunc("POST /tg-api/{path...}", handleTelegramAPI)
@@ -81,10 +84,17 @@ func main() {
 	mux.HandleFunc("GET /health", handleHealth)
 
 	if grafanaBotToken != "" && grafanaChatID != "" && grafanaAlertSecret != "" {
-		mux.HandleFunc("POST /alert", handleGrafanaAlert)
+		mux.HandleFunc("POST /sh-grafana", handleGrafanaAlert)
 		log.Printf("grafana alerts enabled chat_id=%s", grafanaChatID)
 	} else {
 		log.Printf("grafana alerts disabled (set GRAFANA_BOT_TOKEN, GRAFANA_CHAT_ID, GRAFANA_ALERT_SECRET)")
+	}
+
+	if anthropicAPIKey != "" && nomNomSecret != "" {
+		mux.HandleFunc("POST /nom-nom-ai", handleNomNomAI)
+		log.Printf("nom-nom-ai proxy enabled")
+	} else {
+		log.Printf("nom-nom-ai proxy disabled (set ANTHROPIC_API_KEY, NOM_NOM_SECRET)")
 	}
 
 	log.Printf("listening on :%s upstream=%s", port, authCenterURL)

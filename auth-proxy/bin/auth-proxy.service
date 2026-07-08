@@ -10,10 +10,14 @@ WorkingDirectory=
 Environment=PORT=8080
 Environment=AUTH_CENTER_URL=
 
-# Grafana Telegram alerts (optional; /alert enabled only when all three are set)
+# Grafana Telegram alerts (optional; /sh-grafana enabled only when all three are set)
 Environment=GRAFANA_BOT_TOKEN=
 Environment=GRAFANA_CHAT_ID=
 Environment=GRAFANA_ALERT_SECRET=
+
+# nom-nom AI proxy (optional; /nom-nom-ai enabled only when both are set)
+Environment=ANTHROPIC_API_KEY=
+Environment=NOM_NOM_SECRET=
 
 Restart=always
 RestartSec=5

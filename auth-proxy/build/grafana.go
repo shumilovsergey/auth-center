@@ -27,7 +27,7 @@ type grafanaAlert struct {
 	Message string `json:"message"`
 }
 
-// POST /alert — validate the Grafana caller, format its payload, relay to Telegram.
+// POST /sh-grafana — validate the Grafana caller, format its payload, relay to Telegram.
 func handleGrafanaAlert(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if subtle.ConstantTimeCompare([]byte(token), []byte(grafanaAlertSecret)) != 1 {

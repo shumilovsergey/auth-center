@@ -10,7 +10,8 @@ on a host that *can* reach `api.telegram.org` and bridges callers that can't
 build/
   main.go    — config, log middleware, main()
   proxy.go   — /webhook and /tg-api/{path...} handlers
-  grafana.go — /alert handler (Grafana webhook → Telegram sendMessage)
+  grafana.go — /sh-grafana handler (Grafana webhook → Telegram sendMessage)
+  nomnom.go  — /nom-nom-ai handler (authenticated pass-through → Anthropic Messages API)
 ```
 
 ## Endpoints
@@ -19,7 +20,8 @@ build/
 |---|---|---|---|
 | `POST` | `/webhook` | Telegram secret header (passed through) | Forward incoming Telegram updates to auth-center |
 | `POST` | `/tg-api/{path...}` | none (obscure internal path) | Forward outbound Telegram API calls to `api.telegram.org` |
-| `POST` | `/alert` | `Authorization: Bearer <GRAFANA_ALERT_SECRET>` | Relay a Grafana webhook to Telegram as a chat message |
+| `POST` | `/sh-grafana` | `Authorization: Bearer <GRAFANA_ALERT_SECRET>` | Relay a Grafana webhook to Telegram as a chat message |
+| `POST` | `/nom-nom-ai` | `Authorization: Bearer <NOM_NOM_SECRET>` | Pass a request through to the Anthropic Messages API with the real key |
 | `GET`  | `/` | none | Root liveness (exact match `/{$}`); deploy healthcheck probes this. Same body as `/health` |
 | `GET`  | `/health` | none | Liveness; returns `{"status":"ok","upstream":<AUTH_CENTER_URL>}` |
 
@@ -34,7 +36,7 @@ Passes the path through as-is:
 Set `TELEGRAM_API_URL=https://<proxy-domain>/tg-api` on auth-center so its
 outbound Telegram calls route through here.
 
-### `POST /alert`
+### `POST /sh-grafana`
 The one endpoint that holds Telegram creds itself. Flow:
 
 1. Compare `Authorization: Bearer <token>` against `GRAFANA_ALERT_SECRET`
@@ -49,7 +51,28 @@ shape is visible before a formatter is built. The route is registered only when
 all three `GRAFANA_*` vars are set.
 
 Grafana setup: create a **Webhook** contact point → URL
-`https://<proxy-domain>/alert`, Authorization header `Bearer <GRAFANA_ALERT_SECRET>`.
+`https://<proxy-domain>/sh-grafana`, Authorization header `Bearer <GRAFANA_ALERT_SECRET>`.
+
+### `POST /nom-nom-ai`
+An authenticated pass-through to the Anthropic Messages API. The proxy holds the
+real `ANTHROPIC_API_KEY`; nom-nom authenticates with the shared `NOM_NOM_SECRET`
+and never sees the key. Flow:
+
+1. Compare `Authorization: Bearer <token>` against `NOM_NOM_SECRET`
+   (constant-time); reject with `401` on mismatch, forwarding nothing upstream.
+2. Stream the raw request body — treated as opaque — to
+   `https://api.anthropic.com/v1/messages`, adding headers
+   `Content-Type: application/json`, `x-api-key: <ANTHROPIC_API_KEY>`,
+   `anthropic-version: 2023-06-01`.
+3. Return Anthropic's response **verbatim** — same status code, same body. Errors
+   are never rewritten: nom-nom inspects them (`402 Payment Required` and a body
+   of `{"error":{"type":"billing_error"}}` mean "out of credits").
+
+Notes: bodies can be ~10 MB (photo scans embed a base64 image) and are streamed,
+not buffered. The upstream client has a 30s timeout — longer than nom-nom's 20s
+per-call bound — so the proxy is never the first to time out on a ~15s Opus scan.
+The route is registered only when both `ANTHROPIC_API_KEY` and `NOM_NOM_SECRET`
+are set.
 
 ## Logging
 
@@ -72,8 +95,11 @@ alert error=telegram: telegram status=400 body=...
 | `GRAFANA_BOT_TOKEN` | | — | Telegram bot token used to send alerts |
 | `GRAFANA_CHAT_ID` | | — | Telegram chat the alert message goes to |
 | `GRAFANA_ALERT_SECRET` | | — | Shared secret; Grafana sends it as `Authorization: Bearer` |
+| `ANTHROPIC_API_KEY` | | — | Real Anthropic key; lives only on the proxy, used for `/nom-nom-ai` |
+| `NOM_NOM_SECRET` | | — | Shared secret; nom-nom sends it as `Authorization: Bearer` |
 
-`/alert` is enabled only when all three `GRAFANA_*` vars are set.
+`/sh-grafana` is enabled only when all three `GRAFANA_*` vars are set.
+`/nom-nom-ai` is enabled only when both `ANTHROPIC_API_KEY` and `NOM_NOM_SECRET` are set.
 
 ## Deployment
 
