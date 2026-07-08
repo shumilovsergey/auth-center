@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -18,9 +19,15 @@ var (
 	grafanaAlertSecret string
 )
 
-// POST /alert — validate the Grafana caller, then relay its payload to Telegram.
-// For now the raw request body is forwarded as-is so we can see Grafana's real
-// shape before building a formatter.
+// grafanaAlert is the subset of Grafana's webhook payload we care about.
+// Grafana renders the notification's Title/Message templates into these two
+// fields, so we relay them straight through instead of the raw JSON.
+type grafanaAlert struct {
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+// POST /alert — validate the Grafana caller, format its payload, relay to Telegram.
 func handleGrafanaAlert(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if subtle.ConstantTimeCompare([]byte(token), []byte(grafanaAlertSecret)) != 1 {
@@ -36,10 +43,7 @@ func handleGrafanaAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text := strings.TrimSpace(string(body))
-	if text == "" {
-		text = "(empty grafana payload)"
-	}
+	text := formatGrafanaAlert(body)
 	text = truncateRunes(text, 4000) // Telegram hard-caps messages at 4096 chars
 
 	if err := sendTelegramMessage(text); err != nil {
@@ -47,6 +51,29 @@ func handleGrafanaAlert(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "telegram send failed", http.StatusBadGateway)
 		return
 	}
+}
+
+// formatGrafanaAlert extracts the rendered title + message from Grafana's payload.
+// Falls back to the raw body if the JSON can't be parsed or carries no text.
+func formatGrafanaAlert(body []byte) string {
+	var a grafanaAlert
+	if err := json.Unmarshal(body, &a); err == nil {
+		parts := make([]string, 0, 2)
+		if t := strings.TrimSpace(a.Title); t != "" {
+			parts = append(parts, t)
+		}
+		if m := strings.TrimSpace(a.Message); m != "" {
+			parts = append(parts, m)
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, "\n\n")
+		}
+	}
+
+	if raw := strings.TrimSpace(string(body)); raw != "" {
+		return raw
+	}
+	return "(empty grafana payload)"
 }
 
 // sendTelegramMessage posts a plain-text message to GRAFANA_CHAT_ID.
