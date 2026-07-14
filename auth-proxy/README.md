@@ -4,7 +4,7 @@
 
 # auth-proxy
 
-![canvas](/tools/canvas.webp)
+![canvas](/auth-proxy/tools/canvas.webp)
 
 Минимальный прокси-сервис между Telegram и auth-center.
 
