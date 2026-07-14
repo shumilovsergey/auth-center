@@ -77,6 +77,8 @@ func main() {
 	anthropicAPIKey = os.Getenv("ANTHROPIC_API_KEY")
 	nomNomSecret = os.Getenv("NOM_NOM_SECRET")
 
+	githubAllowedIPs = parseCSV(os.Getenv("GITHUB_ALLOWED_IPS"))
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /webhook", handleWebhook)
 	mux.HandleFunc("POST /tg-api/{path...}", handleTelegramAPI)
@@ -95,6 +97,14 @@ func main() {
 		log.Printf("nom-nom-ai proxy enabled")
 	} else {
 		log.Printf("nom-nom-ai proxy disabled (set ANTHROPIC_API_KEY, NOM_NOM_SECRET)")
+	}
+
+	if len(githubAllowedIPs) > 0 {
+		mux.HandleFunc("GET /github/{path...}", handleGitHub)
+		mux.HandleFunc("POST /github/{path...}", handleGitHub)
+		log.Printf("github proxy enabled allowed_ips=%v", githubAllowedIPs)
+	} else {
+		log.Printf("github proxy disabled (set GITHUB_ALLOWED_IPS)")
 	}
 
 	log.Printf("listening on :%s upstream=%s", port, authCenterURL)

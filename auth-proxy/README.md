@@ -4,6 +4,8 @@
 
 # auth-proxy
 
+![canvas](/tools/canvas.webp)
+
 Минимальный прокси-сервис между Telegram и auth-center.
 
 Нужен когда VPS с auth-center не имеет доступа к серверам Telegram.
@@ -19,6 +21,7 @@ VPS-1 (auth)  →  VPS-2 (auth-proxy /tg-api/*)  →  Telegram API
 |---|:---:|---|
 | `AUTH_CENTER_URL` | ★ | Базовый URL auth-center, например `https://auth-center.sh-development.ru` |
 | `PORT` | | Порт сервера (по умолчанию `8080`) |
+| `GITHUB_ALLOWED_IPS` | | Разрешённые IP для `/github/*` (через запятую). Пусто — GitHub-прокси выключен |
 
 ## Локальная разработка
 
@@ -90,10 +93,38 @@ curl -X POST "https://<proxy-domain>/tg-api/bot<BOT_TOKEN>/getMe"
 curl "https://<proxy-domain>/health"
 ```
 
+## GitHub-прокси
+
+Нужен когда VPS с Ansible/деплоем не имеет доступа к GitHub, но `auth-proxy` — имеет.
+Обратный прокси (не редирект): запрос идёт на `auth-proxy`, тот сам ходит в GitHub
+и стримит ответ обратно. Доступ ограничен по IP (`GITHUB_ALLOWED_IPS`) — IP берётся
+из `X-Forwarded-For`, поэтому nginx должен проставлять реальный IP клиента.
+
+Два upstream'а выбираются по префиксу пути:
+
+| Префикс на прокси | Куда идёт | Для чего |
+|---|---|---|
+| `/github/raw/{owner}/{repo}/{ref}/{path}` | `https://raw.githubusercontent.com/...` | скачивание бинарей деплоем |
+| `/github/{owner}/{repo}.git/...` | `https://github.com/...` | `git pull` из Ansible |
+
+**Ansible** — прописать remote на прокси:
+
+```bash
+git remote set-url origin https://auth-proxy.sh-development.ru/github/OWNER/REPO.git
+```
+
+**Деплой** — заменить хост в ссылке на бинарь:
+
+```bash
+# было:  https://raw.githubusercontent.com/OWNER/REPO/main/auth-proxy/bin/auth-proxy
+curl -fSL https://auth-proxy.sh-development.ru/github/raw/OWNER/REPO/main/auth-proxy/bin/auth-proxy -o auth-proxy
+```
+
 ## Эндпоинты
 
 | Метод | Путь | Описание |
 |---|---|---|
 | `POST` | `/webhook` | Пересылает тело и заголовок `X-Telegram-Bot-Api-Secret-Token` на auth-center |
 | `POST` | `/tg-api/{path...}` | Пересылает запросы к Telegram API от auth-center. Путь подставляется как есть: `/tg-api/botTOKEN/sendMessage` → `https://api.telegram.org/botTOKEN/sendMessage` |
+| `GET`·`POST` | `/github/{path...}` | Обратный прокси к GitHub (IP-gated). `raw/*` → `raw.githubusercontent.com`, остальное → `github.com` |
 | `GET` | `/health` | Возвращает `200 OK` — для мониторинга |

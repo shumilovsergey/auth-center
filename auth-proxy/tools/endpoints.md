@@ -12,6 +12,7 @@ build/
   proxy.go   — /webhook and /tg-api/{path...} handlers
   grafana.go — /sh-grafana handler (Grafana webhook → Telegram sendMessage)
   nomnom.go  — /nom-nom-ai handler (authenticated pass-through → Anthropic Messages API)
+  github.go  — /github/{path...} handler (IP-gated reverse proxy → GitHub)
 ```
 
 ## Endpoints
@@ -22,6 +23,7 @@ build/
 | `POST` | `/tg-api/{path...}` | none (obscure internal path) | Forward outbound Telegram API calls to `api.telegram.org` |
 | `POST` | `/sh-grafana` | `Authorization: Bearer <GRAFANA_ALERT_SECRET>` | Relay a Grafana webhook to Telegram as a chat message |
 | `POST` | `/nom-nom-ai` | `Authorization: Bearer <NOM_NOM_SECRET>` | Pass a request through to the Anthropic Messages API with the real key |
+| `GET`·`POST` | `/github/{path...}` | client IP in `GITHUB_ALLOWED_IPS` | Reverse-proxy to GitHub for a box that can't reach it (git pull + raw binaries) |
 | `GET`  | `/` | none | Root liveness (exact match `/{$}`); deploy healthcheck probes this. Same body as `/health` |
 | `GET`  | `/health` | none | Liveness; returns `{"status":"ok","upstream":<AUTH_CENTER_URL>}` |
 
@@ -52,6 +54,19 @@ all three `GRAFANA_*` vars are set.
 
 Grafana setup: create a **Webhook** contact point → URL
 `https://<proxy-domain>/sh-grafana`, Authorization header `Bearer <GRAFANA_ALERT_SECRET>`.
+
+### `GET`·`POST` `/github/{path...}`
+IP-gated reverse proxy to GitHub for a box behind a network wall (Ansible/Semaphore,
+deploy scripts). Client IP is read from `X-Forwarded-For` (first entry) and must be
+in `GITHUB_ALLOWED_IPS`, else `403`. Two upstreams by path prefix:
+
+- `raw/...` → `raw.githubusercontent.com/...` (binary downloads, direct)
+- anything else → `github.com/...` (git smart-HTTP `git pull`, and the
+  `github.com/.../raw/...` form which 302-redirects to raw — the proxy follows it)
+
+Method, query string, headers, and body are passed through; the response is
+streamed back verbatim. Registered only when `GITHUB_ALLOWED_IPS` is non-empty.
+nginx must set `X-Forwarded-For` to the real client — see `tools/nginx.md`.
 
 ### `POST /nom-nom-ai`
 An authenticated pass-through to the Anthropic Messages API. The proxy holds the
@@ -97,9 +112,11 @@ alert error=telegram: telegram status=400 body=...
 | `GRAFANA_ALERT_SECRET` | | — | Shared secret; Grafana sends it as `Authorization: Bearer` |
 | `ANTHROPIC_API_KEY` | | — | Real Anthropic key; lives only on the proxy, used for `/nom-nom-ai` |
 | `NOM_NOM_SECRET` | | — | Shared secret; nom-nom sends it as `Authorization: Bearer` |
+| `GITHUB_ALLOWED_IPS` | | — | Comma-separated client IPs allowed to use `/github/*` (from `X-Forwarded-For`) |
 
 `/sh-grafana` is enabled only when all three `GRAFANA_*` vars are set.
 `/nom-nom-ai` is enabled only when both `ANTHROPIC_API_KEY` and `NOM_NOM_SECRET` are set.
+`/github/*` is enabled only when `GITHUB_ALLOWED_IPS` is non-empty.
 
 ## Deployment
 
