@@ -109,3 +109,219 @@ https://auth-proxy.sh-development.ru/github/raw/shumilovsergey/nom-nom/refs/head
 | `/github/raw/{owner}/{repo}/{ref}/{path}` | `raw.githubusercontent.com/...` | binary downloads (direct) |
 | `/github/{owner}/{repo}.git/...` | `github.com/...` | `git pull` (Ansible) |
 | `/github/{owner}/{repo}/raw/{ref}/{path}` | `github.com/...` → 302 → `raw.githubusercontent.com` | binary downloads (host-swap) |
+
+---
+
+# Nginx and `X-Forwarded-For` — Security Note
+
+## TL;DR
+
+If nginx is the **only proxy** in front of an application that trusts
+`X-Forwarded-For`, **never** use:
+
+```nginx
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
+
+Use:
+
+```nginx
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+---
+
+# Why?
+
+Applications often determine the client's IP from the first value in
+`X-Forwarded-For`.
+
+Example application logic:
+
+```go
+clientIP := strings.Split(xff, ",")[0]
+```
+
+This is common because in a trusted proxy chain the first IP is expected to be
+the original client.
+
+---
+
+# The problem with `$proxy_add_x_forwarded_for`
+
+This variable **appends** nginx's client IP to whatever the client already sent.
+
+If the client sends:
+
+```
+X-Forwarded-For: 1.2.3.4
+```
+
+nginx forwards:
+
+```
+X-Forwarded-For: 1.2.3.4, 178.66.128.220
+```
+
+If the application trusts the **first** IP, it now believes the client is
+`1.2.3.4`.
+
+The client completely controls that value.
+
+This allows IP whitelist bypasses.
+
+Example:
+
+```
+Allowed IP:
+5.189.254.175
+
+Attacker:
+203.0.113.50
+
+Request:
+
+X-Forwarded-For: 5.189.254.175
+```
+
+nginx forwards:
+
+```
+X-Forwarded-For:
+5.189.254.175,203.0.113.50
+```
+
+Application reads:
+
+```
+5.189.254.175
+```
+
+Access granted.
+
+---
+
+# Correct configuration
+
+If nginx is the first and only reverse proxy:
+
+```nginx
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+Now regardless of what the client sends:
+
+```
+Client:
+
+X-Forwarded-For: 5.189.254.175
+```
+
+auth-proxy receives:
+
+```
+X-Forwarded-For: 203.0.113.50
+```
+
+The spoofed value is discarded.
+
+---
+
+# When is `$proxy_add_x_forwarded_for` correct?
+
+Only when nginx itself trusts the proxy in front of it.
+
+Typical example:
+
+```
+Internet
+     │
+Cloudflare
+     │
+nginx
+     │
+Application
+```
+
+or
+
+```
+Internet
+     │
+Load Balancer
+     │
+nginx
+     │
+Application
+```
+
+In these cases nginx must first be configured with the `real_ip` module:
+
+```nginx
+set_real_ip_from <trusted proxy>;
+real_ip_header X-Forwarded-For;
+```
+
+After that:
+
+```nginx
+$remote_addr
+```
+
+already contains the real client IP.
+
+Only then does forwarding or extending `X-Forwarded-For` make sense.
+
+---
+
+# Rule of thumb
+
+## Single nginx in front of the app
+
+```
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+✅ Safe
+
+---
+
+## Multiple trusted proxies
+
+Configure `real_ip` first.
+
+Only after that should `X-Forwarded-For` be propagated.
+
+---
+
+## Never trust client-supplied X-Forwarded-For
+
+Treat it exactly like any other HTTP header:
+
+```
+User-Agent
+Cookie
+Referer
+X-Forwarded-For
+```
+
+The client can send whatever they want.
+
+It only becomes trustworthy after passing through infrastructure that you own
+and explicitly trust.
+
+---
+
+# Security impact
+
+This mistake can bypass:
+
+- IP allowlists
+- Admin panels
+- Internal APIs
+- GitHub proxy restrictions
+- Deployment endpoints
+- Monitoring endpoints
+- Any authentication based on client IP
+
+It is a surprisingly common reverse proxy misconfiguration.
