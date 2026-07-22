@@ -8,6 +8,15 @@ function selectMethod(method) {
   document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('open'));
 
+  // google has no section — go straight to the oauth redirect.
+  // must return before the section lookup below, there is no #section-google.
+  if (method === 'google') {
+    document.getElementById('tile-google').classList.add('active');
+    const r = window.REDIRECT_URL || '';
+    window.location.href = '/google/login' + (r ? '?redirect=' + encodeURIComponent(r) : '');
+    return;
+  }
+
   if (prev === method) {
     activeMethod = null;
     return;
@@ -18,12 +27,6 @@ function selectMethod(method) {
   document.getElementById(`section-${method}`).classList.add('open');
 
   if (method === 'tg') startSession();
-
-  if (method === 'google') {
-    const r = window.REDIRECT_URL || '';
-    const href = '/google/login' + (r ? '?redirect=' + encodeURIComponent(r) : '');
-    document.getElementById('google-btn').href = href;
-  }
 }
 
 // ── shared ────────────────────────────────────────────────────────────────
