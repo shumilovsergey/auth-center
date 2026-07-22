@@ -12,3 +12,5 @@ services:
 
 volumes:
   go-cache:
+
+# docker compose -f dev-compose.yml up --build

@@ -1,14 +1,19 @@
 :root {
   --bg:            #0c0c12;
-  --card:          #111120;
-  --border:        #252340;
-  --border-hover:  #3d3870;
+  --card:          #16162b;
+  --border:        #2f2c52;
+  --border-hover:  #4d4788;
   --border-active: #7c68d0;
   --text:          #b0b0cc;
   --text-dim:      #42405e;
   --input-bg:      #08080f;
   --accent:        #a78bfa;
   --neon:          #c4b5fd;
+
+  /* provider tiles sit *above* the card surface so they read as buttons */
+  --tile-bg:        #1e1d38;
+  --tile-border:    #3a3663;
+  --tile-text:      #9a99bd;
 
   --radius-card: 16px;
   --radius:      10px;
@@ -37,9 +42,13 @@ body {
 /* ── card ───────────────────────────────────────────────────────────────── */
 
 .card {
-  background: var(--card);
+  background: linear-gradient(180deg, #1a1934 0%, var(--card) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(124, 104, 208, 0.06),
+    inset 0 1px 0 rgba(196, 181, 253, 0.07);
   padding: 28px;
   width: 100%;
   max-width: 380px;
@@ -48,14 +57,17 @@ body {
   gap: var(--card-gap);
 }
 
+/* a label, not a button — keeps the framed look but stays calmer than the tiles */
 .card-title {
-  border: 1px solid var(--border-active);
+  border: 1px solid rgba(124, 104, 208, 0.45);
   border-radius: var(--radius);
+  background: rgba(124, 104, 208, 0.08);
   padding: var(--pad-v) var(--pad-h);
   text-align: center;
   color: var(--neon);
   letter-spacing: 0.12em;
   font-size: 13px;
+  user-select: none;
 }
 
 /* ── tiles ──────────────────────────────────────────────────────────────── */
@@ -67,10 +79,11 @@ body {
 }
 
 .tile {
-  background: var(--input-bg);
-  border: 1px solid var(--border);
+  background: var(--tile-bg);
+  border: 1px solid var(--tile-border);
   border-radius: var(--radius);
-  color: var(--text-dim);
+  box-shadow: inset 0 1px 0 rgba(196, 181, 253, 0.06);
+  color: var(--tile-text);
   padding: 18px 8px;
   font-family: inherit;
   font-size: 11px;
@@ -86,14 +99,16 @@ body {
 }
 
 .tile:hover {
-  border-color: var(--border-hover);
-  color: var(--text);
+  border-color: var(--border-active);
+  background: #262547;
+  color: var(--neon);
 }
 
 .tile.active {
   border-color: var(--border-active);
-  color: var(--accent);
-  background: rgba(124, 104, 208, 0.07);
+  color: var(--neon);
+  background: rgba(124, 104, 208, 0.22);
+  box-shadow: inset 0 1px 0 rgba(196, 181, 253, 0.12);
 }
 
 .tile:disabled {
@@ -149,7 +164,7 @@ body {
 .action-btn {
   display: block;
   width: 100%;
-  background: var(--input-bg);
+  background: rgba(124, 104, 208, 0.14);
   border: 1px solid var(--border-active);
   border-radius: var(--radius);
   padding: var(--pad-v) var(--pad-h);
@@ -165,7 +180,7 @@ body {
 }
 
 .action-btn:hover {
-  background: rgba(124, 104, 208, 0.1);
+  background: rgba(124, 104, 208, 0.26);
   color: var(--neon);
   border-color: var(--neon);
 }
