@@ -12,3 +12,5 @@ CLAUDE.md
 **/build/tmp/
 auth-center/auth-center.md
 auth-client/template.md
+
+poc-telegram-app/
