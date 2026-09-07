@@ -65,7 +65,23 @@ The `users` table is created automatically. It holds the minimum:
 
 Add app-specific columns and tables in `app_db.go`. Always reference `users.id` as the foreign key — never `auth_id`.
 
-Name the DB file after the binary — `<app-name>.db`. For this template it is `auth-client.db`. When building a new app, change the default in `db.go` and set `DB_PATH` in the systemd service file accordingly.
+The DB file is named after the app — `<app-name>.db` — and that name is **derived, not typed twice**. `APP_NAME` is the app's identity; the database filename is a child that falls out of it:
+
+```
+APP_NAME=qcode  →  main() sets DB_PATH=qcode.db  →  db.go opens it
+```
+
+`main()` resolves `appName` and fills `DB_PATH` *before* `initDB()`, so `db.go` keeps its one-line `os.Getenv("DB_PATH")` and stays byte-identical across every app. When forking, change **`const defaultAppName` in `main.go`** and set `APP_NAME=` in the service file. **Do not edit the fallback in `db.go`** — `main()` guarantees `DB_PATH` is non-empty, so that branch is unreachable dead code kept only so the shared file is safe standalone.
+
+An explicit `DB_PATH` always wins, which is how a compose mount pins the file to `/data`. Empty and unset are identical (`os.Getenv` returns `""` for both), so a unit file may keep `Environment=DB_PATH=` present as documentation.
+
+⚠️ **A relative `DB_PATH` resolves against the working directory.** Always set `WorkingDirectory=` in the unit — otherwise systemd starts the process in `/` and the database lands at `/<app-name>.db`. Confirm at boot with the start line, which exists precisely so you never have to guess:
+
+```
+start app=qcode db=qcode.db port=8890
+```
+
+Changing `APP_NAME` does **not** migrate anything: the app opens a different file, SQLite creates it empty, and the app comes up with zero users looking wiped. Stop the service, `mv` the `.db` (plus any `-wal` / `-shm` sidecars), then change the variable.
 
 New columns on an existing DB need an `ALTER TABLE` fallback:
 ```go
@@ -108,7 +124,8 @@ The request logger in `main.go` covers HTTP-level logging (`GET / 200 3ms`) auto
 | `APP_URL` | ★ | — | Public URL of this app |
 | `APP_TOKEN` | ★ | — | Secret registered in auth-center's `APP_TOKENS` |
 | `SECRET_KEY` | ★ | `dev-secret` | JWT signing key — always set in prod |
-| `DB_PATH` | | `app.db` | SQLite file path — set to an absolute path in prod |
+| `APP_NAME` | | `defaultAppName` | Runtime identity — names the DB (`<APP_NAME>.db`), the `--version` banner, and the start log line |
+| `DB_PATH` | | `<APP_NAME>.db` | SQLite file path. Explicit value always wins; relative paths need `WorkingDirectory=` |
 | `PORT` | | `8890` | HTTP port |
 
 Copy `.env.example` to `.env` for local dev. Never commit `.env`.

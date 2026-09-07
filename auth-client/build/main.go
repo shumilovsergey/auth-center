@@ -15,6 +15,17 @@ import (
 
 var buildTime = "unknown"
 
+// defaultAppName is the fallback when APP_NAME is unset, so a service file that
+// forgets the variable still starts and still gets auth-client.db rather than a
+// database named after the empty string.
+//
+// ── FORKING THIS TEMPLATE: change this to your app's name. ──
+const defaultAppName = "auth-client"
+
+// appName is the app's runtime identity: the --version banner, the start log
+// line, and (when DB_PATH is unset) the database filename all derive from it.
+var appName string
+
 //go:embed web
 var webFiles embed.FS
 
@@ -91,13 +102,29 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
+	godotenv.Load() //nolint:errcheck
+
+	// Resolved before anything else: --version prints it, and the database is
+	// named after it. Everything downstream reads appName, never a literal.
+	appName = os.Getenv("APP_NAME")
+	if appName == "" {
+		appName = defaultAppName
+	}
+
 	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "--info") {
-		fmt.Printf("auth-client built: %s\n", buildTime)
+		fmt.Printf("%s built: %s\n", appName, buildTime)
 		os.Exit(0)
 	}
 
-	log.SetFlags(log.Ldate | log.Ltime | log.LUTC)
-	godotenv.Load() //nolint:errcheck
+	// An explicit DB_PATH always wins — that is how a compose mount puts the file
+	// on a named volume. With nothing set the name follows the app instead of a
+	// literal, so a service file copied to the next app cannot leave it quietly
+	// writing into auth-client.db. db.go reads DB_PATH, so setting it here keeps
+	// that shared template file untouched and makes its own fallback unreachable.
+	if os.Getenv("DB_PATH") == "" {
+		os.Setenv("DB_PATH", appName+".db") //nolint:errcheck
+	}
 
 	authURL = os.Getenv("AUTH_URL")
 	authInternal = os.Getenv("AUTH_INTERNAL")
@@ -130,6 +157,6 @@ func main() {
 	if port == "" {
 		port = "8890"
 	}
-	log.Printf("listening on :%s", port)
+	log.Printf("start app=%s db=%s port=%s", appName, os.Getenv("DB_PATH"), port)
 	log.Fatal(http.ListenAndServe(":"+port, logMiddleware(mux)))
 }
