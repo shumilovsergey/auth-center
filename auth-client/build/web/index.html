@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>auth-client</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <!-- Paired with the blurred-image background in style.css. Both are off by
+       default: with the gradient backdrop this would fetch 43 KB at high
+       priority that nothing ever draws. Uncomment together with that block.
   <link rel="preload" href="/background.webp" as="image" fetchpriority="high" />
+  -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="auth-client" />
   <link rel="stylesheet" href="/style.css" />

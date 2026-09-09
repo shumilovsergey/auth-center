@@ -34,11 +34,32 @@ body {
 }
 
 /* ── BACKGROUND ──────────────────────────────────────────────────────────
-   Blurred full-bleed image sits behind everything (#bg is always rendered). */
+   #bg is a fixed full-bleed layer behind everything and is always rendered.
+   What it holds is the whole look of the page.
+
+   Default: the auth-center backdrop — two soft radial pools over near-black,
+   so a client built from this template lands on the same ground as the login
+   page the user just came from.
+
+   The blurred-photo variant is kept below, commented out. It is the starting
+   point for a project that wants its own imagery: swap the two blocks and drop
+   a background.webp next to this file. The frosted panels throughout the app
+   (backdrop-filter) are built for it and work either way. */
 
 html { background: #000; }
 body { background: transparent; }
 
+#bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%,    #1a1830 0%, transparent 65%),
+    radial-gradient(ellipse at 100% 100%, #0f0e1e 0%, transparent 60%),
+    #080810;
+  z-index: -1;
+}
+
+/* blurred-image variant — see the note above
 #bg {
   position: fixed;
   inset: -10%;
@@ -49,6 +70,7 @@ body { background: transparent; }
   transform: scale(1.1);
   z-index: -1;
 }
+*/
 
 /* ── NAVBAR ─────────────────────────────────────────────────────────────── */
 
