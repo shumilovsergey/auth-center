@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,48 +17,46 @@ import (
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
-	botToken       string
-	botUsername    string
-	webhookSecret  string
-	telegramAPIURL string
+	botToken    string
+	botUsername string
 
-	// miniappShortName is the ?startapp= mini app to send Telegram logins to,
-	// as registered with @BotFather on the same bot. Empty means the original
-	// bot deeplink — see telegramLink. Switching the whole Telegram branch, and
-	// switching it back, is this one variable and a restart: no code change and
-	// no rebuild, which is what makes the mini app safe to try in production.
+	// miniappShortName is the mini app registered with @BotFather on the same
+	// bot. Telegram logins go there and nowhere else — the bot deeplink and its
+	// webhook were removed once the mini app proved itself in production; see
+	// tools/old_bot_auth.md for how that worked.
 	miniappShortName string
+)
+
+// Link flags. The session token alone cannot say how the user reached the mini
+// app, and the mini app has to know: a scanned QR means the browser waiting for
+// the login is on another machine, so there is nothing to send the user "back"
+// to on the phone in their hand.
+//
+// The flag is one character in front of the token, always present, so the token
+// is always everything after the first character. A prefix that could be absent
+// would be ambiguous — session tokens are base64url and may themselves start
+// with any letter.
+const (
+	linkFromQR     = "q"
+	linkFromButton = "b"
 )
 
 func initTelegram() {
 	botToken = os.Getenv("BOT_TOKEN")
 	botUsername = os.Getenv("BOT_USERNAME")
-	webhookSecret = os.Getenv("WEBHOOK_SECRET")
-	telegramAPIURL = os.Getenv("TELEGRAM_API_URL")
-	if telegramAPIURL == "" {
-		telegramAPIURL = "https://api.telegram.org"
-	}
 	miniappShortName = os.Getenv("MINIAPP_SHORT_NAME")
-	if miniappShortName != "" {
-		log.Printf("telegram: logins go to mini app t.me/%s/%s", botUsername, miniappShortName)
-	} else {
-		log.Printf("telegram: logins go to bot deeplink t.me/%s (mini app off)", botUsername)
+	if miniappShortName == "" {
+		log.Print("telegram: MINIAPP_SHORT_NAME not set — the Telegram login has nowhere to send users")
+		return
 	}
+	log.Printf("telegram: logins go to mini app t.me/%s/%s", botUsername, miniappShortName)
 }
 
-// telegramLink is where a login session sends the user. Both the QR image and
-// the "open in telegram" button carry this one URL, so the two never disagree
-// about which flow is live.
-//
-// The mini app form hands the session token to a page that verifies initData
-// and calls POST /miniapp/auth. The deeplink form hands it to the bot as
-// /start <token>, which comes back through POST /webhook. Either way the token
-// is the same and the session it names is the same.
-func telegramLink(tok string) string {
-	if miniappShortName != "" {
-		return fmt.Sprintf("https://t.me/%s/%s?startapp=%s", botUsername, miniappShortName, tok)
-	}
-	return fmt.Sprintf("https://t.me/%s?start=%s", botUsername, tok)
+// telegramLink is where a login session sends the user, flagged with how the
+// link is being handed over. The QR image and the button carry the same session
+// and differ only in that flag.
+func telegramLink(tok, from string) string {
+	return fmt.Sprintf("https://t.me/%s/%s?startapp=%s%s", botUsername, miniappShortName, from, tok)
 }
 
 // ── session store ─────────────────────────────────────────────────────────────
@@ -104,25 +100,18 @@ func makeQR(url string) (string, error) {
 	return base64.StdEncoding.EncodeToString(png), nil
 }
 
-func sendTG(chatID int64, text string, redirectURL string) {
-	apiURL := fmt.Sprintf("%s/bot%s/sendMessage", telegramAPIURL, botToken)
-	payload := map[string]any{"chat_id": chatID, "text": text}
-	if redirectURL != "" {
-		payload["text"] = text + "\n\n" + redirectURL
-		payload["link_preview_options"] = map[string]any{
-			"url":             redirectURL,
-			"show_above_text": true,
-		}
-	}
-	body, _ := json.Marshal(payload)
-	client := &http.Client{Timeout: 5 * time.Second}
-	client.Post(apiURL, "application/json", bytes.NewReader(body)) //nolint:errcheck
-}
-
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 // POST /qr-session
 func handleQRSession(w http.ResponseWriter, r *http.Request) {
+	// Without a mini app there is no Telegram login at all, and building the
+	// link anyway would hand the browser a t.me URL with an empty path. Say so
+	// instead — Google and Solana are unaffected and the page keeps working.
+	if miniappShortName == "" {
+		jsonErr(w, "telegram login not configured", http.StatusServiceUnavailable)
+		return
+	}
+
 	cleanSessions()
 	var body struct {
 		Redirect string `json:"redirect"`
@@ -138,13 +127,16 @@ func handleQRSession(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionsMu.Unlock()
 
-	tmeURL := telegramLink(tok)
-	qr, err := makeQR(tmeURL)
+	// The QR is scanned by a phone while the browser waiting for the login sits
+	// on another machine; the button is pressed on the machine that is waiting.
+	// Same session either way — the mini app just needs to know which, so it
+	// can leave out a "back" button that would lead to the wrong device.
+	qr, err := makeQR(telegramLink(tok, linkFromQR))
 	if err != nil {
 		jsonErr(w, "qr error", http.StatusInternalServerError)
 		return
 	}
-	jsonOK(w, map[string]string{"token": tok, "qr": qr, "url": tmeURL})
+	jsonOK(w, map[string]string{"token": tok, "qr": qr, "url": telegramLink(tok, linkFromButton)})
 }
 
 // GET /poll/{token}
@@ -172,68 +164,4 @@ func handlePoll(w http.ResponseWriter, r *http.Request) {
 	sessionsMu.Unlock()
 
 	jsonOK(w, resp)
-}
-
-// POST /webhook
-func handleWebhook(w http.ResponseWriter, r *http.Request) {
-	if webhookSecret != "" {
-		if r.Header.Get("X-Telegram-Bot-Api-Secret-Token") != webhookSecret {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-	}
-
-	var update struct {
-		Message struct {
-			Text string `json:"text"`
-			From struct {
-				ID        int64  `json:"id"`
-				FirstName string `json:"first_name"`
-				LastName  string `json:"last_name"`
-				Username  string `json:"username"`
-			} `json:"from"`
-		} `json:"message"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	text := update.Message.Text
-	from := update.Message.From
-
-	if strings.HasPrefix(text, "/start ") {
-		tok := strings.TrimSpace(strings.TrimPrefix(text, "/start "))
-
-		sessionsMu.Lock()
-		sess, ok := sessions[tok]
-		if ok && sess.Status == "pending" && time.Since(sess.CreatedAt) <= sessionTTL {
-			user := map[string]any{
-				"id":         from.ID,
-				"first_name": from.FirstName,
-				"last_name":  from.LastName,
-				"username":   from.Username,
-			}
-			sess.Status = "authenticated"
-			sess.User = user
-			redirect := sess.Redirect
-			if redirect != "" {
-				sess.Code = newCode(user, "telegram")
-			}
-			sessionsMu.Unlock()
-			log.Printf("telegram uid=%d name=%q", from.ID, strings.TrimSpace(from.FirstName+" "+from.LastName))
-			go sendTG(from.ID, "You are authenticated!", redirect)
-		} else {
-			expired := ok && time.Since(sess.CreatedAt) > sessionTTL
-			if expired {
-				delete(sessions, tok)
-			}
-			sessionsMu.Unlock()
-			if ok {
-				go sendTG(from.ID, "This QR code has expired.", "")
-			}
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
 }

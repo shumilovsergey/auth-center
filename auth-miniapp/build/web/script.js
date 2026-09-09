@@ -28,6 +28,12 @@ const AUTH_TIMEOUT = 10000;
 // desktop one, and guessing wrong that way costs nothing.
 const DESKTOP_PLATFORMS = ['tdesktop', 'macos', 'weba', 'webk', 'web'];
 
+// Longest greeting the card takes on one line. The card is 380px wide with 28px
+// padding, and the font is 13px monospace — about 37 characters fit, of which
+// "привет, " spends 8. Anything longer wraps and pushes the button around, so
+// it is cut instead: a name is an identity check, not a document.
+const NAME_MAX = 24;
+
 const el = (id) => document.getElementById(id);
 
 let tg = null;
@@ -38,17 +44,25 @@ let tg = null;
 // one-time code of this page's own, so the app signs the user in on arrival —
 // this webview does not necessarily share cookies with the browser tab that
 // started the login.
+// clip keeps the card one line tall whatever Telegram reports as a name.
+function clip(text) {
+  return text.length > NAME_MAX ? text.slice(0, NAME_MAX - 1) + '…' : text;
+}
+
 function signedIn(data) {
   const who = data.name || (data.username ? '@' + data.username : `id ${data.user_id}`);
-  el('status').textContent = `привет, ${who}`;
+  el('status').textContent = `привет, ${clip(who)}`;
 
+  // No code means no way back worth offering: either the session carried no
+  // redirect, or the user got here by scanning the QR and the browser waiting
+  // for this login is on another machine entirely.
   if (!data.redirect || !data.code) return;
 
   const sep = data.redirect.includes('?') ? '&' : '?';
   const back = `${data.redirect}${sep}code=${data.code}`;
 
   const action = el('action');
-  action.textContent = 'назад';
+  action.textContent = 'НАЗАД';
   action.hidden = false;
   action.addEventListener('click', () => goBack(back));
 }
@@ -89,7 +103,7 @@ function failed(reason) {
   }
 
   const action = el('action');
-  action.textContent = 'ещё раз';
+  action.textContent = 'ЕЩЁ РАЗ';
   action.hidden = false;
   action.addEventListener('click', () => location.reload());
 }

@@ -7,21 +7,26 @@ User=root
 ExecStart=
 WorkingDirectory=
 
-Environment=PORT=
+# NOTE: an Environment= line left blank is NOT the same as no line at all.
+# systemd exports the variable with an empty value, and godotenv.Load() skips
+# any variable that already exists -- so a blank line here silently shadows the
+# value in .env next to the binary. Delete or comment out what you do not set.
+
+Environment=PORT=8886
 Environment=BOT_TOKEN=
 Environment=BOT_USERNAME=
-Environment=WEBHOOK_SECRET=
-
 # Short name of the mini app registered on the SAME bot (@BotFather -> /newapp).
-# Set: Telegram logins go to the mini app -- both the QR and the button carry
-# https://t.me/<BOT_USERNAME>/<short name>?startapp=<session token>, and
-# auth-miniapp reports the identity back through POST /miniapp/auth.
-# Empty: the original bot deeplink and POST /webhook, unchanged.
-# This one variable plus a restart is the whole switch, and the whole rollback.
+# REQUIRED: the whole Telegram login goes through it. Both the QR and the button
+# carry https://t.me/<BOT_USERNAME>/<short name>?startapp=<flag><session token>,
+# and auth-miniapp reports the identity back through POST /miniapp/auth.
+# There is no webhook any more -- see tools/old_bot_auth.md.
 Environment=MINIAPP_SHORT_NAME=
+# Comma-separated app secrets: who may call /exchange and /delegate.
+# LEAVING THIS EMPTY DISABLES THE CHECK -- every app_token is then accepted, so
+# anyone can redeem a login code or mint one for any user id. Empty is the
+# "not configured yet" default, not a safe one.
 Environment=APP_TOKENS=
 Environment=DIRECT_REDIRECT=https://auth.sh-development.ru
-Environment=TELEGRAM_API_URL=
 Environment=GOOGLE_CLIENT_ID=
 Environment=GOOGLE_CLIENT_SECRET=
 Environment=GOOGLE_CALLBACK_URL=https://auth-center.sh-development.ru/google/callback

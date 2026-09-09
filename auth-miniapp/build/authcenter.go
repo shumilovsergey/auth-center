@@ -44,6 +44,7 @@ type bindResult struct {
 type bindRequest struct {
 	SessionToken string   `json:"session_token"`
 	Secret       string   `json:"secret"`
+	FromQR       bool     `json:"from_qr"`
 	User         bindUser `json:"user"`
 }
 
@@ -55,11 +56,13 @@ type bindRequest struct {
 // It returns the address of the app the login started from together with a
 // one-time code of our own, so the page can offer a way back that lands signed
 // in. The code is not the one the waiting tab will spend — auth-center issues a
-// second one for exactly this.
-func bindSession(sessionToken string, u *TGUser) (bindResult, error) {
+// second one for exactly this, and skips it entirely when fromQR says the
+// waiting browser is on another machine.
+func bindSession(sessionToken string, fromQR bool, u *TGUser) (bindResult, error) {
 	body, _ := json.Marshal(bindRequest{
 		SessionToken: sessionToken,
 		Secret:       authSecret,
+		FromQR:       fromQR,
 		User: bindUser{
 			ID:        u.ID,
 			FirstName: u.FirstName,

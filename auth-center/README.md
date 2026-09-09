@@ -15,11 +15,9 @@ Stateless — нет базы данных, нет хранения сессий
 | `PORT` | | Порт сервера (по умолчанию `8886`) |
 | `BOT_TOKEN` | ★ | Токен Telegram-бота из [@BotFather](https://t.me/BotFather) |
 | `BOT_USERNAME` | ★ | Username бота без `@` |
-| `WEBHOOK_SECRET` | | Секрет для проверки Telegram webhook (задаётся при регистрации webhook) |
-| `MINIAPP_SHORT_NAME` | | Short name мини-аппа на том же боте. Задан — Telegram-вход идёт через [auth-miniapp](/auth-miniapp/README.md), пуст — через бота и webhook. См. ниже |
+| `MINIAPP_SHORT_NAME` | ★ | Short name мини-аппа на том же боте (@BotFather → `/newapp`). Через него идёт весь Telegram-вход — см. [auth-miniapp](/auth-miniapp/README.md). Без него Telegram-ветке некуда вести |
 | `APP_TOKENS` | ★ | Секреты приложений через запятую — кто может вызывать `/exchange` |
 | `DIRECT_REDIRECT` | | Куда редиректить пользователя если он открыл auth-center напрямую без `?redirect=` |
-| `TELEGRAM_API_URL` | | Базовый URL Telegram API (по умолчанию `https://api.telegram.org`). Если VPS не имеет доступа к Telegram — указать URL auth-proxy, например `https://auth-proxy.domain.com/tg-api` |
 | `GOOGLE_CLIENT_ID` | | Client ID из Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | | Client Secret из Google Cloud Console |
 | `GOOGLE_CALLBACK_URL` | | Полный URL callback'а, должен совпадать с настройкой в Google Cloud (`https://your-domain/google/callback`) |
@@ -29,12 +27,9 @@ Stateless — нет базы данных, нет хранения сессий
 **Telegram**
 1. [@BotFather](https://t.me/BotFather) → `/newbot` → скопировать `BOT_TOKEN`
 2. Username бота → `BOT_USERNAME`
-3. Придумать `WEBHOOK_SECRET` — произвольная строка
-4. Зарегистрировать webhook (выполнить один раз после деплоя):
+3. [@BotFather](https://t.me/BotFather) → `/newapp` на том же боте → указать домен [auth-miniapp](/auth-miniapp/README.md) и short name → `MINIAPP_SHORT_NAME`
 
-```bash
-curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" -H "Content-Type: application/json" -d '{"url":"https://your-auth-center-domain/webhook","secret_token":"<WEBHOOK_SECRET>"}'
-```
+Webhook регистрировать не нужно: личность приходит от мини-аппа, а не от бота. Исходящий доступ к Telegram auth-center тоже больше не требуется — как это работало раньше, записано в [`tools/old_bot_auth.md`](tools/old_bot_auth.md).
 
 **Google**
 1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → Create OAuth 2.0 Client ID
@@ -164,9 +159,9 @@ Auth-center не помнит пользователя — это задача �
 
 ## Вход через Telegram Mini App
 
-`POST /miniapp/auth` — вторая дорога в Telegram-ветку, рядом с нынешней связкой бот + webhook. Вызывает её [auth-miniapp](/auth-miniapp/README.md): мини-апп открывается внутри Telegram, проверяет подпись `initData` и сообщает сюда личность, называя сессию токеном, который приехал в `?startapp=`.
+`POST /miniapp/auth` — единственная дорога в Telegram-ветку. Вызывает её [auth-miniapp](/auth-miniapp/README.md): мини-апп открывается внутри Telegram, проверяет подпись `initData` и сообщает сюда личность, называя сессию токеном, который приехал в `?startapp=`.
 
-Дальше всё как обычно: сессия переходит в `authenticated`, вкладка забирает код на `/poll/{token}`, приложение меняет его на `/exchange`. `method` остаётся `telegram` — клиентские приложения разницы не видят.
+Дальше всё как обычно: сессия переходит в `authenticated`, вкладка забирает код на `/poll/{token}`, приложение меняет его на `/exchange`. `method` остаётся `telegram` — клиентские приложения разницы не видят. Связка с ботом и `POST /webhook` удалена, см. [`tools/old_bot_auth.md`](tools/old_bot_auth.md).
 
 ```
 POST /miniapp/auth
@@ -175,20 +170,15 @@ POST /miniapp/auth
 
 Ответы: `200 {"ok": true, "redirect": "<адрес приложения>", "code": "<одноразовый код>"}` — из них мини-апп собирает кнопку возврата. Код здесь **второй**, отдельный от того, что лежит в сессии: тот ждёт вкладка на `/poll`, и одноразовый код, потраченный дважды, у кого-то не сработает. Дальше `403` секрет не сошёлся, `404` сессии нет или истекла, `409` сессия уже использована, `503` у auth-center не задан `BOT_TOKEN`.
 
-### Переключение Telegram-ветки
+### Флаг источника в ссылке
 
-`MINIAPP_SHORT_NAME` решает, куда ведёт вход через Telegram. Одна ссылка на сессию, её же получает и QR, и кнопка — разойтись они не могут:
+QR и кнопка ведут на одну сессию и различаются одним символом перед токеном в `?startapp=`:
 
-| Значение | Ссылка | Как приходит личность |
+| Флаг | Откуда | Что из этого следует |
 |---|---|---|
-| пусто | `https://t.me/<bot>?start=<токен>` | бот → `POST /webhook` (нужен webhook, иногда auth-proxy) |
-| `direct` | `https://t.me/<bot>/direct?startapp=<токен>` | мини-апп → `POST /miniapp/auth` |
+| `b` | нажата кнопка «open in telegram» | ждущий браузер — на этом же устройстве, мини-апп предлагает кнопку «НАЗАД» |
+| `q` | отсканирован QR | сканировали телефоном, а ждёт браузер на другой машине — вести пользователя некуда, кнопки нет |
 
-Токен сессии, `/poll`, одноразовый код и `/exchange` в обоих случаях одни и те же — переключается только способ доставки личности.
+Флаг занимает ровно один символ и присутствует всегда, поэтому токен — это всё, что после первого символа. Префикс, который мог бы отсутствовать, читался бы неоднозначно: токены сессий это base64url и сами могут начинаться с любой буквы.
 
-Откат — снять переменную и перезапустить сервис. Ни правки кода, ни пересборки бинаря: webhook-путь остаётся на месте и продолжает работать. При старте auth-center пишет в лог, какой режим включён:
-
-```
-telegram: logins go to mini app t.me/sh_pocapp_bot/direct
-telegram: logins go to bot deeplink t.me/sh_pocapp_bot (mini app off)
-```
+Для `q` auth-center не выписывает мини-аппу второй код — он всё равно некому тратить, а лишний живой одноразовый код держать незачем.

@@ -146,7 +146,6 @@ func main() {
 	mux.HandleFunc("GET /", handleIndex)
 	mux.HandleFunc("POST /qr-session", handleQRSession)
 	mux.HandleFunc("GET /poll/{token}", handlePoll)
-	mux.HandleFunc("POST /webhook", handleWebhook)
 	mux.HandleFunc("POST /miniapp/auth", handleMiniappAuth)
 	mux.HandleFunc("POST /solana/nonce", handleSolanaNonce)
 	mux.HandleFunc("POST /solana/auth", handleSolanaAuth)

@@ -38,17 +38,24 @@ func initMiniapp() {
 
 // POST /miniapp/auth — server-to-server only, never called from the browser.
 //
-// The Telegram mini app path replaces the bot round-trip: auth-miniapp checks
-// the initData signature and reports the identity here, naming the session by
-// the token it carried in start_param. From this point on the flow is the one
-// the webhook already uses — the browser tab picks the result up on /poll.
+// This is how a Telegram identity reaches auth-center: auth-miniapp checks the
+// initData signature and reports the identity here, naming the session by the
+// token it carried in start_param. From this point the flow is the ordinary one
+// — the browser tab picks the result up on /poll. The bot round-trip this
+// replaced is written up in tools/old_bot_auth.md.
 func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 	cleanSessions()
 
 	var body struct {
 		SessionToken string `json:"session_token"`
 		Secret       string `json:"secret"`
-		User         struct {
+		// FromQR says the user scanned the QR, which means the browser waiting
+		// for this login is on another machine. No code is issued in that case:
+		// the mini app has nowhere useful to send the phone in the user's hand,
+		// and a one-time code nobody spends is a credential kept alive for no
+		// reason.
+		FromQR bool `json:"from_qr"`
+		User   struct {
 			ID        int64  `json:"id"`
 			FirstName string `json:"first_name"`
 			LastName  string `json:"last_name"`
@@ -115,7 +122,8 @@ func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 	log.Printf("miniapp uid=%d name=%q", from.ID, strings.TrimSpace(from.FirstName+" "+from.LastName))
 
 	// Hand back the app's address plus a code of the mini app's own, so it can
-	// offer a way home that lands signed in.
+	// offer a way home that lands signed in. A scanned QR gets the address but
+	// no code — see FromQR above.
 	//
 	// It has to be a second code, not the one the session holds: the browser tab
 	// that started the login is polling for that one and will spend it, and a
@@ -123,7 +131,7 @@ func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 	// verified identity give nothing away — each is single-use, each expires in
 	// codeTTL, and redeeming either still needs an app token.
 	resp := map[string]any{"ok": true, "redirect": redirect}
-	if redirect != "" {
+	if redirect != "" && !body.FromQR {
 		resp["code"] = newCode(user, "telegram")
 	}
 	jsonOK(w, resp)

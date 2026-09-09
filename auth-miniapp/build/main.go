@@ -18,6 +18,22 @@ var buildTime = "unknown"
 
 const defaultAppName = "auth-miniapp"
 
+// Link flags auth-center puts in front of the session token in ?startapp=.
+// A QR was scanned, so the browser waiting for the login is on another machine;
+// a button was pressed on the machine that is waiting. Kept in step with
+// linkFromQR / linkFromButton in auth-center's telegram.go.
+const (
+	fromQR     = "q"
+	fromButton = "b"
+)
+
+func linkSource(flag string) string {
+	if flag == fromQR {
+		return "qr"
+	}
+	return "button"
+}
+
 var appName string
 
 //go:embed web
@@ -139,18 +155,29 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The session token travels in ?startapp=, which Telegram covers with the
+	// The session travels in ?startapp=, which Telegram covers with the
 	// signature — so by this line it is as trustworthy as the user id itself.
-	sessionToken := data.Get("start_param")
-	if sessionToken == "" {
-		log.Printf("auth: uid=%d has no start_param — link carried no session", user.ID)
+	// auth-center puts one flag character in front of the token saying how the
+	// link was handed over, so the token is everything after the first
+	// character. See linkFromQR / linkFromButton in auth-center's telegram.go.
+	startParam := data.Get("start_param")
+	if len(startParam) < 2 {
+		log.Printf("auth: uid=%d start_param=%q — link carried no session", user.ID, startParam)
 		writeJSON(w, http.StatusBadRequest, authResponse{
-			Error: "this link carries no login session — start from the login page",
+			Error: "в ссылке нет сессии входа — начните со страницы входа",
+		})
+		return
+	}
+	from, sessionToken := startParam[:1], startParam[1:]
+	if from != fromQR && from != fromButton {
+		log.Printf("auth: uid=%d unknown link flag %q", user.ID, from)
+		writeJSON(w, http.StatusBadRequest, authResponse{
+			Error: "ссылка входа не распознана",
 		})
 		return
 	}
 
-	bound, err := bindSession(sessionToken, user)
+	bound, err := bindSession(sessionToken, from == fromQR, user)
 	if err != nil {
 		log.Printf("auth: uid=%d bind failed: %v", user.ID, err)
 		writeJSON(w, http.StatusBadGateway, authResponse{Error: err.Error()})
@@ -158,8 +185,8 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := strings.TrimSpace(user.FirstName + " " + user.LastName)
-	log.Printf("auth: BOUND uid=%d username=%q name=%q session=%s back=%q",
-		user.ID, user.Username, name, sessionToken, bound.Redirect)
+	log.Printf("auth: BOUND uid=%d username=%q name=%q via=%s session=%s back=%q",
+		user.ID, user.Username, name, linkSource(from), sessionToken, bound.Redirect)
 
 	writeJSON(w, http.StatusOK, authResponse{
 		OK: true, UserID: user.ID, Name: name, Username: user.Username,

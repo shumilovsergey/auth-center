@@ -11,7 +11,7 @@ Auth-center не хранит сессии и не имеет базы данн�
 
 - [auth-center](auth-center/README.md) — сервер аутентификации, к нему подключаются все приложения
 - [auth-client](auth-client/README.md) — демо-клиент и референсная реализация подключения
-- [auth-proxy](auth-proxy/README.md) — прокси для Telegram webhook, если VPS с auth-center не имеет доступа к серверам Telegram
+- [auth-proxy](auth-proxy/README.md) — прокси общего назначения (Grafana-алерты, GitHub). Telegram-вход через него больше не идёт
 - [auth-miniapp](auth-miniapp/README.md) — Telegram-вход через Mini App
 
 

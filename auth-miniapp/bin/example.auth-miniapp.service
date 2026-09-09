@@ -2,11 +2,23 @@
 Description=auth-center Telegram Mini App
 After=network.target
 
+# BOT_TOKEN and AUTH_INTERNAL are checked at startup, so an unconfigured unit
+# exits immediately. Without a limit, Restart=always would retry every 5s
+# forever and the failure would only ever be visible in the journal; with it the
+# unit gives up and shows as failed, which is what anyone looking will check.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
 [Service]
 User=root
 ExecStart=
 
 WorkingDirectory=
+
+# NOTE: an Environment= line left blank is NOT the same as no line at all.
+# systemd exports the variable with an empty value, and godotenv.Load() skips
+# any variable that already exists -- so a blank line here silently shadows the
+# value in .env next to the binary. Delete or comment out what you do not set.
 
 # Runtime identity: sets the --version banner and the `start app=… port=…`
 # line logged at boot.

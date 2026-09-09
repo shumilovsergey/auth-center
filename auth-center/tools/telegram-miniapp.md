@@ -1,8 +1,10 @@
 # Telegram Mini App — replacing the bot-chat button
 
-**Status:** PoC done and verified in production on 2026-09-07. Not yet implemented in
-auth-center. This document is the record of what was proven and everything needed to
-build it — the PoC itself (`poc-telegram-app/`) is disposable and may already be gone.
+**Status: BUILT.** Shipped as [auth-miniapp](/auth-miniapp/README.md) and now the only
+Telegram login path — the bot and its webhook are gone (see
+[`old_bot_auth.md`](old_bot_auth.md)). This document is kept as the record of the design
+and of what the PoC proved; for how the thing actually works now, read auth-miniapp's
+README. Where the two disagree, the README wins.
 
 ---
 
