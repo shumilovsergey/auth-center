@@ -1,0 +1,131 @@
+/* ════════════════════════════════════════════════════════════════════════
+   auth-miniapp — same visual language as auth-center's login page, trimmed
+   to what one screen needs. Deliberately NOT themed by Telegram's own
+   variables: this page is the tail of a flow that starts on auth-center, and
+   it should look like the same product rather than like the chat around it.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:            #0c0c12;
+  --card:          #16162b;
+  --border:        #2f2c52;
+  --border-active: #7c68d0;
+  --text:          #b0b0cc;
+  --text-dim:      #42405e;
+  --accent:        #a78bfa;
+  --neon:          #c4b5fd;
+
+  --radius-card: 16px;
+  --radius:      10px;
+  --pad-v:       13px;
+  --pad-h:       18px;
+  --card-gap:    20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  background:
+    radial-gradient(ellipse at 50% 0%,    #1a1830 0%, transparent 65%),
+    radial-gradient(ellipse at 100% 100%, #0f0e1e 0%, transparent 60%),
+    #080810;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+}
+
+/* ── card ───────────────────────────────────────────────────────────────── */
+
+.card {
+  background: linear-gradient(180deg, #1a1934 0%, var(--card) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(124, 104, 208, 0.06),
+    inset 0 1px 0 rgba(196, 181, 253, 0.07);
+  padding: 28px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.card-title {
+  border: 1px solid rgba(124, 104, 208, 0.45);
+  border-radius: var(--radius);
+  background: rgba(124, 104, 208, 0.08);
+  padding: var(--pad-v) var(--pad-h);
+  text-align: center;
+  color: var(--neon);
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  user-select: none;
+  word-break: break-word;
+}
+
+/* Only the failure gets a colour of its own. Success is just the page working,
+   and painting that green made the card louder than auth-center's, which says
+   nothing in colour until something is wrong. */
+.card-title.error {
+  border-color: #5c2e2e;
+  background: rgba(70, 30, 30, 0.12);
+  color: #e87a7a;
+  letter-spacing: 0.06em;
+}
+
+/* ── action button ──────────────────────────────────────────────────────── */
+
+.action-btn {
+  display: block;
+  width: 100%;
+  background: rgba(124, 104, 208, 0.14);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius);
+  padding: var(--pad-v) var(--pad-h);
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  line-height: 1;
+}
+
+.action-btn:hover {
+  background: rgba(124, 104, 208, 0.26);
+  color: var(--neon);
+  border-color: var(--neon);
+}
+
+.action-btn[hidden] { display: none; }
+
+/* Matched to the provider tiles on auth-center's login page: 18px padding
+   around a 22px icon, a 9px gap and an 11px label — 80px including the border.
+   The button under the greeting carries the same weight as the one that
+   started the login. */
+.action-btn.tall {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── failure detail ─────────────────────────────────────────────────────── */
+
+/* The technical reason, kept quiet. The user gets the plain sentence above;
+   this line is what makes the screenshot they send worth anything. */
+.detail {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+  word-break: break-word;
+}

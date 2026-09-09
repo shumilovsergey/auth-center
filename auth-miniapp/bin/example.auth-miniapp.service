@@ -1,0 +1,39 @@
+[Unit]
+Description=auth-center Telegram Mini App
+After=network.target
+
+[Service]
+User=root
+ExecStart=
+
+WorkingDirectory=
+
+# Runtime identity: sets the --version banner and the `start app=… port=…`
+# line logged at boot.
+Environment=APP_NAME=auth-miniapp
+
+Environment=PORT=8892
+
+# Must be the token of the SAME bot auth-center runs — both sides derive the
+# shared secret from it. The service refuses to start if it is empty.
+Environment=BOT_TOKEN=
+
+# Where the verified identity goes — auth-center's base URL, no path.
+# A trailing slash is fine either way.
+#
+#   same host as auth-center:  http://localhost:8886
+#     the call never leaves the machine, so plain http is fine.
+#
+#   different host:            https://auth-center.sh-development.ru
+#     MUST be https. The call carries the shared secret in its body, and over
+#     plain http anyone on the path reads it and can then assert any Telegram
+#     ID to auth-center. Use the same public URL clients use — POST /miniapp/auth
+#     sits on the same mux as every other route, so an nginx that proxies / to
+#     auth-center already covers it, and nothing extra needs opening.
+Environment=AUTH_INTERNAL=http://localhost:8886
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

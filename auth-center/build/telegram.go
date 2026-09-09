@@ -19,10 +19,17 @@ import (
 // ── config ────────────────────────────────────────────────────────────────────
 
 var (
-	botToken      string
-	botUsername   string
-	webhookSecret string
+	botToken       string
+	botUsername    string
+	webhookSecret  string
 	telegramAPIURL string
+
+	// miniappShortName is the ?startapp= mini app to send Telegram logins to,
+	// as registered with @BotFather on the same bot. Empty means the original
+	// bot deeplink — see telegramLink. Switching the whole Telegram branch, and
+	// switching it back, is this one variable and a restart: no code change and
+	// no rebuild, which is what makes the mini app safe to try in production.
+	miniappShortName string
 )
 
 func initTelegram() {
@@ -33,6 +40,27 @@ func initTelegram() {
 	if telegramAPIURL == "" {
 		telegramAPIURL = "https://api.telegram.org"
 	}
+	miniappShortName = os.Getenv("MINIAPP_SHORT_NAME")
+	if miniappShortName != "" {
+		log.Printf("telegram: logins go to mini app t.me/%s/%s", botUsername, miniappShortName)
+	} else {
+		log.Printf("telegram: logins go to bot deeplink t.me/%s (mini app off)", botUsername)
+	}
+}
+
+// telegramLink is where a login session sends the user. Both the QR image and
+// the "open in telegram" button carry this one URL, so the two never disagree
+// about which flow is live.
+//
+// The mini app form hands the session token to a page that verifies initData
+// and calls POST /miniapp/auth. The deeplink form hands it to the bot as
+// /start <token>, which comes back through POST /webhook. Either way the token
+// is the same and the session it names is the same.
+func telegramLink(tok string) string {
+	if miniappShortName != "" {
+		return fmt.Sprintf("https://t.me/%s/%s?startapp=%s", botUsername, miniappShortName, tok)
+	}
+	return fmt.Sprintf("https://t.me/%s?start=%s", botUsername, tok)
 }
 
 // ── session store ─────────────────────────────────────────────────────────────
@@ -110,7 +138,7 @@ func handleQRSession(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionsMu.Unlock()
 
-	tmeURL := fmt.Sprintf("https://t.me/%s?start=%s", botUsername, tok)
+	tmeURL := telegramLink(tok)
 	qr, err := makeQR(tmeURL)
 	if err != nil {
 		jsonErr(w, "qr error", http.StatusInternalServerError)

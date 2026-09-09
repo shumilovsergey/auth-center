@@ -48,8 +48,21 @@ function navigateWithCode(redirectUrl, code) {
 
 // ── telegram QR ───────────────────────────────────────────────────────────
 
+// How long to keep listening for a login. auth-center keeps a session for five
+// minutes (sessionTTL), so anything shorter here stops listening while the link
+// the user is holding still works — they finish in Telegram and this tab has
+// already given up. Matching the server is the honest number.
+const SESSION_TTL_MS = 5 * 60 * 1000;
+
 let pollInterval = null;
 let pollTimeout  = null;
+
+function sessionExpired() {
+  clearInterval(pollInterval);
+  clearTimeout(pollTimeout);
+  document.getElementById('qr-area').classList.add('hidden');
+  document.getElementById('tg-refresh').style.display = 'block';
+}
 
 async function startSession() {
   clearInterval(pollInterval);
@@ -70,15 +83,19 @@ async function startSession() {
 
   pollInterval = setInterval(() => poll(token), 2000);
 
-  pollTimeout = setTimeout(() => {
-    clearInterval(pollInterval);
-    document.getElementById('qr-area').classList.add('hidden');
-    document.getElementById('tg-refresh').style.display = 'block';
-  }, 20000);
+  pollTimeout = setTimeout(sessionExpired, SESSION_TTL_MS);
 }
 
 async function poll(token) {
-  const data = await fetch(`/poll/${token}`).then(r => r.json());
+  const res  = await fetch(`/poll/${token}`);
+  const data = await res.json();
+
+  // A gone session answers 404 {"error":"expired"} — there is no status field
+  // to read, so the response code is what says to stop.
+  if (res.status === 404) {
+    sessionExpired();
+    return;
+  }
 
   if (data.status === 'authenticated') {
     clearInterval(pollInterval);
@@ -99,11 +116,6 @@ async function poll(token) {
     );
   }
 
-  if (data.status === 'expired') {
-    clearInterval(pollInterval);
-    document.getElementById('qr-area').classList.add('hidden');
-    document.getElementById('tg-refresh').style.display = 'block';
-  }
 }
 
 

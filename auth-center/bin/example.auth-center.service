@@ -11,6 +11,14 @@ Environment=PORT=
 Environment=BOT_TOKEN=
 Environment=BOT_USERNAME=
 Environment=WEBHOOK_SECRET=
+
+# Short name of the mini app registered on the SAME bot (@BotFather -> /newapp).
+# Set: Telegram logins go to the mini app -- both the QR and the button carry
+# https://t.me/<BOT_USERNAME>/<short name>?startapp=<session token>, and
+# auth-miniapp reports the identity back through POST /miniapp/auth.
+# Empty: the original bot deeplink and POST /webhook, unchanged.
+# This one variable plus a restart is the whole switch, and the whole rollback.
+Environment=MINIAPP_SHORT_NAME=
 Environment=APP_TOKENS=
 Environment=DIRECT_REDIRECT=https://auth.sh-development.ru
 Environment=TELEGRAM_API_URL=

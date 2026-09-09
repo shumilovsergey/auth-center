@@ -135,6 +135,7 @@ func main() {
 	}
 
 	initTelegram()
+	initMiniapp()
 	initGoogle()
 	initTemplate()
 
@@ -146,6 +147,7 @@ func main() {
 	mux.HandleFunc("POST /qr-session", handleQRSession)
 	mux.HandleFunc("GET /poll/{token}", handlePoll)
 	mux.HandleFunc("POST /webhook", handleWebhook)
+	mux.HandleFunc("POST /miniapp/auth", handleMiniappAuth)
 	mux.HandleFunc("POST /solana/nonce", handleSolanaNonce)
 	mux.HandleFunc("POST /solana/auth", handleSolanaAuth)
 	mux.HandleFunc("GET /google/login", handleGoogleLogin)
