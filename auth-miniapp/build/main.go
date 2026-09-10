@@ -52,6 +52,10 @@ var (
 	authSecret string
 )
 
+// botEnabled says whether POST /webhook is served. Off unless APP_URL is set;
+// see webhook.go, where the whole bot half lives.
+var botEnabled bool
+
 // ── request logging ───────────────────────────────────────────────────────────
 
 type statusWriter struct {
@@ -161,6 +165,20 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	// link was handed over, so the token is everything after the first
 	// character. See linkFromQR / linkFromButton in auth-center's telegram.go.
 	startParam := data.Get("start_param")
+
+	// Nothing at all in start_param is not a broken link — it is somebody who
+	// opened the mini app on their own, from the bot or from a t.me link, with
+	// no login waiting anywhere. That is the front door, and it has an ending
+	// of its own; see handleHome.
+	if startParam == "" {
+		handleHome(w, user)
+		return
+	}
+
+	// Something that is not nothing, though, was meant to be a session. A
+	// truncated or unrecognised flag says so and stops: turning a broken login
+	// link into a trip to the home app would hide a real failure from somebody
+	// who was trying to reach a different app entirely.
 	if len(startParam) < 2 {
 		log.Printf("auth: uid=%d start_param=%q — link carried no session", user.ID, startParam)
 		writeJSON(w, http.StatusBadRequest, authResponse{
@@ -194,6 +212,27 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleHome finishes a visit that began with nobody waiting for it. The reply
+// has the same shape as a login's, because from the page's side it is the same
+// thing: a name to greet and one way onward. Only the log tells them apart.
+func handleHome(w http.ResponseWriter, user *TGUser) {
+	home, err := homeLogin(user)
+	if err != nil {
+		log.Printf("auth: uid=%d home failed: %v", user.ID, err)
+		writeJSON(w, http.StatusBadGateway, authResponse{Error: err.Error()})
+		return
+	}
+
+	name := strings.TrimSpace(user.FirstName + " " + user.LastName)
+	log.Printf("auth: BOUND uid=%d username=%q name=%q via=home back=%q",
+		user.ID, user.Username, name, home.Redirect)
+
+	writeJSON(w, http.StatusOK, authResponse{
+		OK: true, UserID: user.ID, Name: name, Username: user.Username,
+		Redirect: home.Redirect, Code: home.Code,
+	})
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -212,6 +251,7 @@ func main() {
 
 	botToken = os.Getenv("BOT_TOKEN")
 	authInternal = os.Getenv("AUTH_INTERNAL")
+	appURL = os.Getenv("APP_URL")
 
 	// Both are refused at startup rather than per request. A mini app that
 	// boots without them looks healthy and fails only at the moment someone
@@ -224,12 +264,21 @@ func main() {
 	}
 	authSecret = deriveSecret(botToken)
 
+	// Unlike the two above, this one is optional and never fatal: the bot is a
+	// side job, and a login has to work whether or not it is turned on.
+	botEnabled = initWebhook()
+
 	webFS, _ := fs.Sub(webFiles, "web")
 	fileServer := http.FileServer(http.FS(webFS))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", handleIndex)
 	mux.HandleFunc("POST /api/auth", handleAuth)
+	// Registered only when the bot is on, so that a stray POST to a service
+	// that never asked for updates is a 404 rather than something to explain.
+	if botEnabled {
+		mux.HandleFunc("POST "+webhookPath, handleWebhook)
+	}
 	// Optional self-hosted copy of the Telegram SDK: absent by default, in
 	// which case this 404s at once and the page falls back to telegram.org.
 	// Dropping telegram-web-app.js into build/web/ removes the dependency on a
@@ -243,6 +292,6 @@ func main() {
 	if port == "" {
 		port = "8892"
 	}
-	log.Printf("start app=%s port=%s auth=%s", appName, port, authInternal)
+	log.Printf("start app=%s port=%s auth=%s bot=%t", appName, port, authInternal, botEnabled)
 	log.Fatal(http.ListenAndServe(":"+port, logMiddleware(mux)))
 }

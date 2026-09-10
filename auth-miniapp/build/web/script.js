@@ -6,6 +6,21 @@
    a user who reports "it didn't work" with nothing else is a user nobody can
    help.
 
+   The way back is a button, and it stays a button even though the page knows
+   the destination the moment it greets the user. The tap is not there to ask
+   permission — it is there because on the browser-based Telegram clients
+   WebApp.openLink() comes down to window.open, and a window.open with no user
+   gesture behind it is exactly what popup blockers exist to stop. The button
+   is what carries the gesture. Automating it buys one saved tap and pays for
+   it with a route that works or does not depending on someone's browser
+   settings, which is a bad trade for the last step of a login.
+
+   The one ending that closes itself is the QR one below, and it is the only
+   one: there is no link to open there, so there is nothing a close() could
+   race with. Everywhere else the page stays put and the user closes it with
+   Telegram's own cross — the conservative half of every choice here, and the
+   half that has been running in production.
+
    Two rules carried over from the PoC this grew out of:
      - the SDK is loaded with a timeout, never as a blocking <script>, because
        telegram.org is not reachable from every network and a blank page
@@ -28,11 +43,22 @@ const AUTH_TIMEOUT = 10000;
 // desktop one, and guessing wrong that way costs nothing.
 const DESKTOP_PLATFORMS = ['tdesktop', 'macos', 'weba', 'webk', 'web'];
 
-// Longest greeting the card takes on one line. The card is 380px wide with 28px
-// padding, and the font is 13px monospace — about 37 characters fit, of which
-// "привет, " spends 8. Anything longer wraps and pushes the button around, so
-// it is cut instead: a name is an identity check, not a document.
-const NAME_MAX = 24;
+// Longest name the frame takes on one line. The card is 380px wide with 28px
+// padding and the frame another 18px, and the font is 13px monospace — about 33
+// characters fit. Anything longer wraps and pushes the button around, so it is
+// cut instead: a name here is an identity check, not a document.
+//
+// It used to be 24, back when the frame also carried a "привет, " in front of
+// the name. The caption moved out to a line of its own and gave the name the
+// full width.
+const NAME_MAX = 32;
+
+// How long the name stays up on the QR ending before the page closes itself.
+// That ending has no button and no destination, so this card is the entire
+// receipt for the login on this device — long enough to read a name, which is
+// the only place the user is told WHICH account just signed in, and short
+// enough that nobody starts looking for the close button.
+const QR_CLOSE_MS = 1600;
 
 const el = (id) => document.getElementById(id);
 
@@ -40,34 +66,55 @@ let tg = null;
 
 // ── the two endings ───────────────────────────────────────────────────────
 
-// signedIn greets the user and offers one way onward. The button carries a
-// one-time code of this page's own, so the app signs the user in on arrival —
-// this webview does not necessarily share cookies with the browser tab that
-// started the login.
 // clip keeps the card one line tall whatever Telegram reports as a name.
 function clip(text) {
   return text.length > NAME_MAX ? text.slice(0, NAME_MAX - 1) + '…' : text;
 }
 
+// signedIn names the user and offers one way onward. The button carries a
+// one-time code of this page's own, so the app signs the user in on arrival —
+// this webview does not necessarily share cookies with the browser tab that
+// started the login.
+//
+// The name is the whole point of this screen: it is the only place anybody is
+// told WHICH account just signed in, and on a phone with two Telegram accounts
+// that is not a rhetorical question. Hence a caption that says what the frame
+// below it means, rather than a greeting that buries the answer in a sentence.
 function signedIn(data) {
   const who = data.name || (data.username ? '@' + data.username : `id ${data.user_id}`);
-  el('status').textContent = `привет, ${clip(who)}`;
 
-  // No code means no way back worth offering: either the session carried no
-  // redirect, or the user got here by scanning the QR and the browser waiting
-  // for this login is on another machine entirely.
-  if (!data.redirect || !data.code) return;
+  el('label').hidden = false;
+  const status = el('status');
+  status.classList.add('name');
+  status.textContent = clip(who);
+
+  // No code means there is nowhere on this device to send anyone: either the
+  // session carried no redirect, or the user got here by scanning the QR and
+  // the browser waiting for this login is on another machine entirely. That
+  // browser is already polling and will finish without us, so a button here
+  // would lead to the wrong device — the page shows who signed in and gets out
+  // of the way instead.
+  if (!data.redirect || !data.code) {
+    setTimeout(closeApp, QR_CLOSE_MS);
+    return;
+  }
 
   const sep = data.redirect.includes('?') ? '&' : '?';
   const back = `${data.redirect}${sep}code=${data.code}`;
 
   const action = el('action');
-  action.textContent = 'НАЗАД';
+  action.textContent = 'ДАЛЕЕ';
   action.hidden = false;
   action.addEventListener('click', () => goBack(back));
 }
 
+function closeApp() {
+  if (tg?.close) tg.close();
+}
+
 // goBack sends the user onward by the route that suits the client they are on.
+// It runs inside the button's click handler, which is the whole reason the
+// button exists — see the header.
 //
 // On a phone, navigating this webview keeps them inside Telegram, where they
 // already are and where the app they came from is a collapsed tab. Handing that
@@ -77,6 +124,13 @@ function signedIn(data) {
 // On a desktop client that same external browser is exactly right: the user
 // already has the app open in a real browser window, and keeping them in
 // Telegram's built-in view leaves them with two copies in two places.
+//
+// Neither path closes the mini app, though it has finished its job the moment
+// the link is handed over. On a phone a close() would take down the page just
+// navigated to; on a desktop it would land on top of whatever openLink started,
+// including the "open this link?" prompt some clients raise. What tidying up
+// could win at most is one cross the user does not have to click. The QR ending
+// closes itself only because there it competes with nothing.
 function goBack(url) {
   const desktop = DESKTOP_PLATFORMS.includes(tg?.platform);
   console.log('[auth-miniapp] platform', tg?.platform, desktop ? '→ browser' : '→ stay in telegram');
@@ -91,6 +145,9 @@ function goBack(url) {
 // failed says the plain thing, then the useful thing. reason is whatever the
 // server or the network actually reported; it is not translated, because its
 // audience is whoever reads the screenshot afterwards.
+//
+// Nothing here happens on a timer: a failure the page cleared away by itself is
+// a failure nobody can screenshot.
 function failed(reason) {
   const status = el('status');
   status.className = 'card-title error';

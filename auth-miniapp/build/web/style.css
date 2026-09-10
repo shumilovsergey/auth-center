@@ -24,6 +24,14 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The `hidden` attribute is display:none from the browser's own stylesheet, and
+   ANY author rule that sets display beats it. That is not hypothetical here:
+   .action-btn.tall sets display:flex, so a hidden button kept its 80px and sat
+   on the card as an empty rectangle — visible on a QR login, which has no
+   button, and for a blink on every load. One !important costs less than
+   remembering this at each new display rule. */
+[hidden] { display: none !important; }
+
 body {
   font-family: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
   font-size: 13px;
@@ -105,8 +113,6 @@ body {
   border-color: var(--neon);
 }
 
-.action-btn[hidden] { display: none; }
-
 /* Matched to the provider tiles on auth-center's login page: 18px padding
    around a 22px icon, a 9px gap and an 11px label — 80px including the border.
    The button under the greeting carries the same weight as the one that
@@ -116,6 +122,33 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ── who you are ────────────────────────────────────────────────────────── */
+
+/* A caption and the framed value under it are one thing, so they sit closer to
+   each other than the card's own 20px rhythm allows. */
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Quieter than the name it introduces: the name is the answer, this is only
+   the question it answers. */
+.card-label {
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  user-select: none;
+}
+
+/* The frame normally holds a short caps label, where 0.12em tracking reads as
+   deliberate. A person's name is not that — spaced out like a sign it stops
+   looking like the name they know. */
+.card-title.name {
+  letter-spacing: 0.03em;
 }
 
 /* ── failure detail ─────────────────────────────────────────────────────── */

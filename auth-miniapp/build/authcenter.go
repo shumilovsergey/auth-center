@@ -48,6 +48,12 @@ type bindRequest struct {
 	User         bindUser `json:"user"`
 }
 
+// homeRequest names no session, because there is none — see homeLogin.
+type homeRequest struct {
+	Secret string   `json:"secret"`
+	User   bindUser `json:"user"`
+}
+
 // bindSession hands the verified identity to auth-center, naming the session by
 // the token that rode in start_param. Once this returns, the browser tab that
 // opened the link picks the result up on its next /poll and leaves for the
@@ -71,7 +77,32 @@ func bindSession(sessionToken string, fromQR bool, u *TGUser) (bindResult, error
 		},
 	})
 
-	url := strings.TrimRight(authInternal, "/") + "/miniapp/auth"
+	return postAuthCenter("/miniapp/auth", body)
+}
+
+// homeLogin is the other way in. Nobody is waiting for this user: they opened
+// the mini app on their own, so there is no session to name and no browser tab
+// polling for a result. auth-center answers with a code and with the address of
+// the app a Telegram visitor belongs in — which is its decision, not ours. This
+// app never proposes a destination; holding the secret lets it assert who
+// somebody is, and that is deliberately all it lets it do.
+func homeLogin(u *TGUser) (bindResult, error) {
+	body, _ := json.Marshal(homeRequest{
+		Secret: authSecret,
+		User: bindUser{
+			ID:        u.ID,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+			Username:  u.Username,
+		},
+	})
+	return postAuthCenter("/miniapp/home", body)
+}
+
+// postAuthCenter is the shared half of both calls: one POST, and auth-center's
+// own wording on the way out.
+func postAuthCenter(path string, body []byte) (bindResult, error) {
+	url := strings.TrimRight(authInternal, "/") + path
 	resp, err := authClient.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return bindResult{}, fmt.Errorf("auth-center unreachable: %w", err)

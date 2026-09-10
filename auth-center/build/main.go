@@ -126,6 +126,7 @@ func main() {
 	godotenv.Load() //nolint:errcheck
 
 	directRedirect = os.Getenv("DIRECT_REDIRECT")
+	miniappHomeRedirect = os.Getenv("MINIAPP_DIRECT_REDIRECT")
 
 	appTokens = make(map[string]bool)
 	for _, t := range strings.Split(os.Getenv("APP_TOKENS"), ",") {
@@ -147,6 +148,7 @@ func main() {
 	mux.HandleFunc("POST /qr-session", handleQRSession)
 	mux.HandleFunc("GET /poll/{token}", handlePoll)
 	mux.HandleFunc("POST /miniapp/auth", handleMiniappAuth)
+	mux.HandleFunc("POST /miniapp/home", handleMiniappHome)
 	mux.HandleFunc("POST /solana/nonce", handleSolanaNonce)
 	mux.HandleFunc("POST /solana/auth", handleSolanaAuth)
 	mux.HandleFunc("GET /google/login", handleGoogleLogin)

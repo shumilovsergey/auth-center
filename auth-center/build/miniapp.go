@@ -20,6 +20,21 @@ const miniappSecretPurpose = "auth-center/miniapp/v1"
 
 var miniappSecret string
 
+// miniappHomeRedirect is where a Telegram user who walked in on their own ends
+// up — see handleMiniappHome. Empty disables that route and nothing else.
+//
+// It lives here rather than in auth-miniapp on purpose. auth-miniapp holds a
+// secret that lets it assert Telegram identities it has verified, and that is
+// all it should hold: if it also named the destination, it could point a valid
+// login code at any address it liked. Destinations stay auth-center's to
+// decide, exactly as they are for every session that comes in with a redirect.
+//
+// It is the Telegram twin of DIRECT_REDIRECT, which answers the same question
+// for a browser that arrives at auth-center with no ?redirect= — same idea,
+// different front door, deliberately a separate value so the two can point at
+// different apps.
+var miniappHomeRedirect string
+
 func miniappSecretFrom(token string) string {
 	mac := hmac.New(sha256.New, []byte(token))
 	mac.Write([]byte(miniappSecretPurpose)) //nolint:errcheck
@@ -28,10 +43,53 @@ func miniappSecretFrom(token string) string {
 
 func initMiniapp() {
 	if botToken == "" {
-		log.Print("miniapp: BOT_TOKEN not set — POST /miniapp/auth disabled")
+		log.Print("miniapp: BOT_TOKEN not set — POST /miniapp/auth and /miniapp/home disabled")
 		return
 	}
 	miniappSecret = miniappSecretFrom(botToken)
+
+	if miniappHomeRedirect == "" {
+		log.Print("miniapp: MINIAPP_DIRECT_REDIRECT not set — POST /miniapp/home disabled")
+	}
+}
+
+// ── what both miniapp routes share ────────────────────────────────────────────
+
+// miniappUser is the identity auth-miniapp asserts. It has already checked the
+// Telegram signature over it; nothing here re-verifies anything, which is
+// precisely why the secret below matters.
+type miniappUser struct {
+	ID        int64  `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Username  string `json:"username"`
+}
+
+func (u miniappUser) asMap() map[string]any {
+	return map[string]any{
+		"id":         u.ID,
+		"first_name": u.FirstName,
+		"last_name":  u.LastName,
+		"username":   u.Username,
+	}
+}
+
+// authorizeMiniapp is the door both routes come through: it answers whether the
+// caller proved it holds the same BOT_TOKEN we do, and writes the refusal
+// itself when it does not. route names the caller in the log, since "disabled"
+// and "unauthorized" mean very different things depending on which one it was.
+func authorizeMiniapp(w http.ResponseWriter, r *http.Request, route, secret string) bool {
+	if miniappSecret == "" {
+		log.Printf("miniapp/%s error=disabled from=%s", route, r.RemoteAddr)
+		jsonErr(w, "miniapp auth not configured", http.StatusServiceUnavailable)
+		return false
+	}
+	if !hmac.Equal([]byte(secret), []byte(miniappSecret)) {
+		log.Printf("miniapp/%s error=unauthorized from=%s", route, r.RemoteAddr)
+		jsonErr(w, "unauthorized", http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 // ── handler ───────────────────────────────────────────────────────────────────
@@ -54,29 +112,21 @@ func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 		// the mini app has nowhere useful to send the phone in the user's hand,
 		// and a one-time code nobody spends is a credential kept alive for no
 		// reason.
-		FromQR bool `json:"from_qr"`
-		User   struct {
-			ID        int64  `json:"id"`
-			FirstName string `json:"first_name"`
-			LastName  string `json:"last_name"`
-			Username  string `json:"username"`
-		} `json:"user"`
+		FromQR bool        `json:"from_qr"`
+		User   miniappUser `json:"user"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr(w, "no data", http.StatusBadRequest)
 		return
 	}
 
-	if miniappSecret == "" {
-		log.Printf("miniapp error=disabled from=%s", r.RemoteAddr)
-		jsonErr(w, "miniapp auth not configured", http.StatusServiceUnavailable)
+	if !authorizeMiniapp(w, r, "auth", body.Secret) {
 		return
 	}
-	if !hmac.Equal([]byte(body.Secret), []byte(miniappSecret)) {
-		log.Printf("miniapp error=unauthorized from=%s", r.RemoteAddr)
-		jsonErr(w, "unauthorized", http.StatusForbidden)
-		return
-	}
+	// An empty session token stays an error and must never quietly become
+	// something else: a caller that lost the token on the way is a bug, and a
+	// bug that ends in a successful login is the worst kind. The guest case has
+	// a route of its own — see handleMiniappHome.
 	if body.SessionToken == "" || body.User.ID == 0 {
 		jsonErr(w, "missing fields", http.StatusBadRequest)
 		return
@@ -105,12 +155,7 @@ func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := map[string]any{
-		"id":         from.ID,
-		"first_name": from.FirstName,
-		"last_name":  from.LastName,
-		"username":   from.Username,
-	}
+	user := from.asMap()
 	sess.Status = "authenticated"
 	sess.User = user
 	if sess.Redirect != "" {
@@ -135,4 +180,52 @@ func handleMiniappAuth(w http.ResponseWriter, r *http.Request) {
 		resp["code"] = newCode(user, "telegram")
 	}
 	jsonOK(w, resp)
+}
+
+// ── the front door ────────────────────────────────────────────────────────────
+
+// POST /miniapp/home — server-to-server only, never called from the browser.
+//
+// The other route answers "a login is in progress, here is who it is". This one
+// answers a different question: somebody opened the mini app on their own —
+// from the bot, from a t.me link, from Telegram's menu button — with no login
+// waiting anywhere. Until this existed that ended in an error, which is a poor
+// greeting for the one entry point a human is likely to find by accident.
+//
+// So there is no session to bind and nobody polling: auth-center simply mints a
+// code for the app named by MINIAPP_DIRECT_REDIRECT and hands it back, and the
+// mini app page offers the way in. From the receiving app's side nothing is
+// unusual — method is "telegram", there is no `via` marker, and the code is
+// redeemed through the same POST /exchange as every other login. It is a normal
+// Telegram login that simply began in Telegram rather than in a browser.
+func handleMiniappHome(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Secret string      `json:"secret"`
+		User   miniappUser `json:"user"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonErr(w, "no data", http.StatusBadRequest)
+		return
+	}
+
+	if !authorizeMiniapp(w, r, "home", body.Secret) {
+		return
+	}
+	if miniappHomeRedirect == "" {
+		log.Printf("miniapp/home error=no_redirect uid=%d", body.User.ID)
+		jsonErr(w, "miniapp home not configured", http.StatusServiceUnavailable)
+		return
+	}
+	if body.User.ID == 0 {
+		jsonErr(w, "missing fields", http.StatusBadRequest)
+		return
+	}
+
+	user := body.User.asMap()
+	code := newCode(user, "telegram")
+
+	log.Printf("miniapp/home uid=%d name=%q to=%s",
+		body.User.ID, strings.TrimSpace(body.User.FirstName+" "+body.User.LastName), miniappHomeRedirect)
+
+	jsonOK(w, map[string]any{"ok": true, "redirect": miniappHomeRedirect, "code": code})
 }

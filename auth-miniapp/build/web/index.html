@@ -15,9 +15,16 @@
 <body>
   <div class="card">
 
-    <!-- Same two rectangles as auth-center's login page: a framed label, then
-         one big button under it. Here the label is the outcome. -->
-    <div id="status" class="card-title">проверяем…</div>
+    <!-- Same rectangles as auth-center's login page: a framed value, then one
+         big button under it. The frame holds whatever the page has to say —
+         "проверяем…", then either the name that just signed in or the refusal.
+         The caption above it appears only for the name, since only a name needs
+         introducing. The button is deliberately a button and not a timer — see
+         the header of script.js. -->
+    <div class="who">
+      <p id="label" class="card-label" hidden>Вы вошли как:</p>
+      <div id="status" class="card-title">проверяем…</div>
+    </div>
 
     <p id="detail" class="detail" hidden></p>
 
