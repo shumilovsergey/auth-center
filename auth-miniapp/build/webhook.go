@@ -33,7 +33,20 @@ import (
 const webhookPath = "/webhook"
 
 // What a /start gets in return. The whole vocabulary of this bot.
-const greeting = "привет!"
+//
+// Plain text on purpose: Telegram linkifies @sergey_showmelove and
+// sh-development.ru by itself, so there is no parse_mode here and nothing to
+// escape — and nothing that turns into a broken message the day somebody adds
+// an underscore or an asterisk to this text.
+const greeting = `Привет и добро пожаловать в sh-development 👋
+Меня зовут Сергей Шумилов 😎
+
+Снизу слева - кнопка с моими приложениями
+
+Мой Telegram - @sergey_showmelove
+Мой сайт - sh-development.ru
+
+Если у вас возникнут вопросы или предложения - you are welcome! 🙂`
 
 // Telegram delivers updates one at a time per bot and waits for the response
 // before sending the next, so the handler answers first and works after.

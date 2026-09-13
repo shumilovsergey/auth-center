@@ -279,7 +279,7 @@ setWebhook(url=<APP_URL>/webhook,
 
 | Пришло | Что делает | Метод |
 |---|---|---|
-| `/start` (в том числе `/start <payload>` и `/start@bot`) | отвечает `привет!` | `sendMessage` |
+| `/start` (в том числе `/start <payload>` и `/start@bot`) | отвечает приветствием (константа `greeting` в `webhook.go`) | `sendMessage` |
 | что угодно другое — текст, фото, стикер | удаляет сообщение | `deleteMessage` |
 
 `/startgame` — это другая команда, а не `/start`: проверяется, что после префикса идёт конец строки или разделитель. Тест `TestIsStartCommand`.
