@@ -31,7 +31,10 @@
        the real browser, and on the browser-based clients that call is a
        window.open — a blocked one looks from here exactly like a successful
        one, so there is no attempt worth making and nothing safe to close on.
-       The route out stays the button, with the user's gesture behind it.
+       The route out stays the button, with the user's gesture behind it. What
+       the tap does do is close the mini app a moment later: Telegram resumes a
+       mini app that was left open rather than starting it fresh, so a finished
+       login would come back the next time somebody opens the app.
 
      - QR: close, and nothing else. The browser waiting for this login is on
        another machine, so there is no link that would help here and no button
@@ -86,6 +89,12 @@ const AUTO_DELAY_MS = 450;
 // gone well before this fires. If it does not, the wait cost the user a second
 // and left them exactly where the desktop user already is.
 const MOBILE_ACTION_MS = 1000;
+
+// How long the desktop close waits after the tap handed the link over. The
+// close itself is not tidiness — see goBack — but it must not land on the
+// "open this link?" prompt some clients raise, because closing the mini app out
+// from under that prompt cancels the very link we just gave them.
+const DESKTOP_CLOSE_MS = 1500;
 
 // A pagehide this long after the automatic jump is taken as that jump landing.
 // Later than this and it is the user leaving on their own — by the button, or
@@ -202,16 +211,27 @@ function closeApp() {
 // already has the app open in a real browser window, and keeping them in
 // Telegram's built-in view leaves them with two copies in two places.
 //
-// Neither path closes the mini app. A tap is the user steering, and they can
-// see where they landed; only the automatic jump in autoOnward tidies up after
-// itself, because there nobody watched it happen. On desktop this function is
-// the only route there is — nothing is attempted before it.
+// On desktop this function is the only route there is: nothing is attempted
+// before the tap. It closes the mini app afterwards — not to tidy up, but
+// because Telegram would otherwise resume this same instance on the next open.
+// The phone path does not close here; the jump replaces this document, and
+// autoOnward already closes from pagehide when it was the one that jumped.
 function goBack(url) {
   const desktop = DESKTOP_PLATFORMS.includes(tg?.platform);
   console.log('[auth-miniapp] platform', tg?.platform, desktop ? '→ browser' : '→ stay in telegram');
 
   if (desktop && tg?.openLink) {
     tg.openLink(url);
+
+    // And then close, which on desktop is not about tidiness. A mini app left
+    // open is not neutral there: Telegram resumes THIS instance the next time
+    // the app is opened instead of starting a new one, so a finished login
+    // would come back in place of the new one somebody just asked for. The tap
+    // is where this page's job ends, and the close is what makes that stick.
+    //
+    // Only this branch closes. The fallback below navigates the webview itself,
+    // and a close() would take down the page just navigated to.
+    setTimeout(closeApp, DESKTOP_CLOSE_MS);
     return;
   }
   window.location.href = url;
