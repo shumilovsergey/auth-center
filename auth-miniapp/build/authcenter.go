@@ -99,6 +99,19 @@ func homeLogin(u *TGUser) (bindResult, error) {
 	return postAuthCenter("/miniapp/home", body)
 }
 
+// apiError is auth-center's refusal with its status still attached. The status
+// is what lets a caller tell one refusal from another — "already used" is a
+// session that did its job, "expired" is one that never will — without
+// matching on the wording of a message meant for a human.
+type apiError struct {
+	Status  int
+	Message string
+}
+
+func (e *apiError) Error() string {
+	return fmt.Sprintf("auth-center said %d: %s", e.Status, e.Message)
+}
+
 // postAuthCenter is the shared half of both calls: one POST, and auth-center's
 // own wording on the way out.
 func postAuthCenter(path string, body []byte) (bindResult, error) {
@@ -126,5 +139,5 @@ func postAuthCenter(path string, body []byte) (bindResult, error) {
 	if e.Error == "" {
 		e.Error = strings.TrimSpace(string(raw))
 	}
-	return bindResult{}, fmt.Errorf("auth-center said %d: %s", resp.StatusCode, e.Error)
+	return bindResult{}, &apiError{Status: resp.StatusCode, Message: e.Error}
 }

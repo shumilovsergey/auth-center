@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -197,18 +198,52 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 	bound, err := bindSession(sessionToken, from == fromQR, user)
 	if err != nil {
+		// A session that was already spent is the one refusal that is not a
+		// failure. Telegram resumes a mini app that was left open instead of
+		// starting it fresh, so a second visit arrives carrying the same link
+		// as the first — and the person holding it is verified in Telegram
+		// right this second. Sending that to the front door gives them what
+		// opening the app from the menu would have: their own way in. The
+		// alternative is an error screen for somebody who did nothing wrong.
+		//
+		// Every other refusal still stops here. "expired" means the login this
+		// link named is gone and nobody is waiting; a bad flag or a lost token
+		// is a bug, and a bug that ends in a successful login is the worst
+		// kind — see the branches above.
+		var apiErr *apiError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusConflict {
+			log.Printf("auth: uid=%d session=%s already used — through the front door instead", user.ID, sessionToken)
+			home, homeErr := homeLogin(user)
+			if homeErr == nil {
+				finishLogin(w, user, home, fmt.Sprintf("via=home after=used session=%s", sessionToken))
+				return
+			}
+			// No front door configured, or auth-center is unwell. The original
+			// refusal is the more useful of the two to report: this one is
+			// about our fallback, not about their login.
+			log.Printf("auth: uid=%d front door unavailable: %v", user.ID, homeErr)
+		}
+
 		log.Printf("auth: uid=%d bind failed: %v", user.ID, err)
 		writeJSON(w, http.StatusBadGateway, authResponse{Error: err.Error()})
 		return
 	}
 
+	finishLogin(w, user, bound, fmt.Sprintf("via=%s session=%s", linkSource(from), sessionToken))
+}
+
+// finishLogin writes the one answer this service has. Every way in ends here:
+// a bound session, the front door, and a link whose session was already spent.
+// The page cannot tell them apart and does not need to — it gets a name and one
+// way onward. Only the log says which door somebody came through.
+func finishLogin(w http.ResponseWriter, user *TGUser, res bindResult, detail string) {
 	name := strings.TrimSpace(user.FirstName + " " + user.LastName)
-	log.Printf("auth: BOUND uid=%d username=%q name=%q via=%s session=%s back=%q",
-		user.ID, user.Username, name, linkSource(from), sessionToken, bound.Redirect)
+	log.Printf("auth: BOUND uid=%d username=%q name=%q %s back=%q",
+		user.ID, user.Username, name, detail, res.Redirect)
 
 	writeJSON(w, http.StatusOK, authResponse{
 		OK: true, UserID: user.ID, Name: name, Username: user.Username,
-		Redirect: bound.Redirect, Code: bound.Code,
+		Redirect: res.Redirect, Code: res.Code,
 	})
 }
 
@@ -223,14 +258,7 @@ func handleHome(w http.ResponseWriter, user *TGUser) {
 		return
 	}
 
-	name := strings.TrimSpace(user.FirstName + " " + user.LastName)
-	log.Printf("auth: BOUND uid=%d username=%q name=%q via=home back=%q",
-		user.ID, user.Username, name, home.Redirect)
-
-	writeJSON(w, http.StatusOK, authResponse{
-		OK: true, UserID: user.ID, Name: name, Username: user.Username,
-		Redirect: home.Redirect, Code: home.Code,
-	})
+	finishLogin(w, user, home, "via=home")
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
