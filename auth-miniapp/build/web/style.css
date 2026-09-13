@@ -211,6 +211,36 @@ body::before {
   word-break: break-word;
 }
 
+/* ── waiting ────────────────────────────────────────────────────────────── */
+
+/* Same box as .action-btn.tall, so the swap from spinner to button moves
+   nothing on the card. Hidden by the [hidden] rule at the top of this file —
+   the display:grid here is exactly the kind of author rule that would
+   otherwise beat the attribute. */
+.pending {
+  min-height: 5rem;
+  display: grid;
+  place-items: center;
+}
+
+.spinner {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink-soft);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* The global reduce rule collapses the duration rather than the animation, and
+   a ring spinning at that speed is a smear. Drop the moving part and leave the
+   ring: it still marks the place where something is happening. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { border-top-color: var(--line); }
+}
+
 /* ── action button ──────────────────────────────────────────────────────── */
 
 .action-btn {

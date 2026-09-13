@@ -17,11 +17,15 @@
 
    What each ending tries, and what is left standing when the try fails:
 
+
      - phone (and every unrecognised platform): navigate this webview to the
        app. If the navigation takes, this document is torn down — `pagehide` is
        both the only proof it happened and the last moment we can still run
-       anything, so the close() lives there. If nothing moves, the greeting and
-       the button stay exactly as they were.
+       anything, so the close() lives there. Here the button waits a second
+       behind a spinner: the page is leaving, and a button that flashes up and
+       vanishes reads as a missed chance to press it. Whoever is still on this
+       card after MOBILE_ACTION_MS gets the button, because the jump can be
+       refused and a spinner that never resolves is worse than a button.
 
      - desktop: nothing automatic at all. openLink() is what hands the link to
        the real browser, and on the browser-based clients that call is a
@@ -76,6 +80,12 @@ const NAME_MAX = 32;
 // Long enough for the greeting to paint and be read as an answer, short enough
 // that nobody has started reaching for the button yet.
 const AUTO_DELAY_MS = 450;
+
+// How long the phone gets to leave on its own before the button appears
+// anyway. If the jump lands, nobody ever sees the button — the document is
+// gone well before this fires. If it does not, the wait cost the user a second
+// and left them exactly where the desktop user already is.
+const MOBILE_ACTION_MS = 1000;
 
 // A pagehide this long after the automatic jump is taken as that jump landing.
 // Later than this and it is the user leaving on their own — by the button, or
@@ -132,26 +142,39 @@ function signedIn(data) {
   const sep = data.redirect.includes('?') ? '&' : '?';
   const back = `${data.redirect}${sep}code=${data.code}`;
 
-  // The button goes up before anything is attempted, so a refused attempt
-  // changes nothing about what the user is looking at.
   const action = el('action');
   action.textContent = 'ДАЛЕЕ';
-  action.hidden = false;
   action.addEventListener('click', () => goBack(back));
 
+  // Desktop attempts nothing by itself, so the button is the route and goes up
+  // at once — see goBack and the header.
+  if (DESKTOP_PLATFORMS.includes(tg?.platform)) {
+    action.hidden = false;
+    return;
+  }
+
+  // A phone is about to navigate itself, and a button that appears only to
+  // vanish half a second later reads as a thing the user missed their chance
+  // to press. A spinner says the true thing instead — the page is going
+  // somewhere — and stands in the button's own box, so the swap moves nothing.
+  const pending = el('pending');
+  pending.hidden = false;
+
   setTimeout(() => autoOnward(back), AUTO_DELAY_MS);
+
+  // The button still comes, because the jump can be refused and a spinner that
+  // never resolves is worse than the button it replaced.
+  setTimeout(() => {
+    pending.hidden = true;
+    action.hidden = false;
+  }, MOBILE_ACTION_MS);
 }
 
-// autoOnward does by itself what the button does when tapped, on the one route
-// where the page can tell whether it worked. It is deliberately not goBack():
-// that function routes every client, this one runs for the client whose jump
-// leaves proof behind.
+// autoOnward does by itself what the button does when tapped. Only the phone
+// branch of signedIn calls it: desktop is left alone, because the way out
+// there is openLink(), which on the browser-based clients is a window.open
+// nobody can verify — see the header.
 function autoOnward(url) {
-  // Desktop is left alone on purpose: there the way out is openLink(), which on
-  // the browser-based clients is a window.open nobody can verify — see the
-  // header. The button carries that one, gesture and all.
-  if (DESKTOP_PLATFORMS.includes(tg?.platform)) return;
-
   // A phone stays inside Telegram, so the jump replaces this document. Arm the
   // proof before triggering it: once the navigation commits there is no later.
   const startedAt = Date.now();

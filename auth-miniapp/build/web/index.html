@@ -28,6 +28,10 @@
 
     <p id="detail" class="detail" hidden></p>
 
+    <!-- The phone's waiting state. It stands in the button's own box, so when
+         the button replaces it a second later nothing on the card moves. -->
+    <div id="pending" class="pending" hidden aria-hidden="true"><span class="spinner"></span></div>
+
     <button id="action" type="button" class="action-btn tall" hidden></button>
 
   </div>
