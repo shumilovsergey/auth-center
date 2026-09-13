@@ -198,24 +198,24 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 	bound, err := bindSession(sessionToken, from == fromQR, user)
 	if err != nil {
-		// A session that was already spent is the one refusal that is not a
-		// failure. Telegram resumes a mini app that was left open instead of
-		// starting it fresh, so a second visit arrives carrying the same link
-		// as the first — and the person holding it is verified in Telegram
-		// right this second. Sending that to the front door gives them what
-		// opening the app from the menu would have: their own way in. The
-		// alternative is an error screen for somebody who did nothing wrong.
+		// A session that is spent or gone is not a failure of this person's.
+		// Telegram resumes a mini app that was left open instead of starting it
+		// fresh, so a second visit arrives carrying the first visit's link —
+		// against a session that visit already used, or one that has since run
+		// out its five minutes. Either way the link is stale and the human is
+		// not: initData proved who they are two lines up. Sending them to the
+		// front door gives them what opening the app from the menu would have.
+		// The alternative is an error screen for somebody who did nothing
+		// wrong, and who cannot do anything about it either.
 		//
-		// Every other refusal still stops here. "expired" means the login this
-		// link named is gone and nobody is waiting; a bad flag or a lost token
-		// is a bug, and a bug that ends in a successful login is the worst
-		// kind — see the branches above.
-		var apiErr *apiError
-		if errors.As(err, &apiErr) && apiErr.Status == http.StatusConflict {
-			log.Printf("auth: uid=%d session=%s already used — through the front door instead", user.ID, sessionToken)
+		// A caller bug still stops here: a truncated token or an unknown flag
+		// is caught above, before auth-center is ever asked, and a bug that
+		// ends in a successful login is the worst kind.
+		if spentSession(err) {
+			log.Printf("auth: uid=%d session=%s stale (%v) — through the front door instead", user.ID, sessionToken, err)
 			home, homeErr := homeLogin(user)
 			if homeErr == nil {
-				finishLogin(w, user, home, fmt.Sprintf("via=home after=used session=%s", sessionToken))
+				finishLogin(w, user, home, fmt.Sprintf("via=home after=stale session=%s", sessionToken))
 				return
 			}
 			// No front door configured, or auth-center is unwell. The original
@@ -230,6 +230,26 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	finishLogin(w, user, bound, fmt.Sprintf("via=%s session=%s", linkSource(from), sessionToken))
+}
+
+// spentSession says whether auth-center refused because the session behind the
+// link is no longer usable — 409 for one that was already spent, 404 for one
+// that expired or was never known.
+//
+// The 404 is the one that also looks at the wording, and deliberately so: 404
+// is what ANY web server says to a path it does not serve, so a mistyped
+// AUTH_INTERNAL would otherwise turn every single login into a quiet trip to
+// the home app instead of the app the user actually asked for. "expired" is
+// auth-center's own word for this — see handleMiniappAuth in its miniapp.go —
+// and nothing else answers with it. 409 needs no such guard: a stray one is not
+// a thing web servers emit by accident.
+func spentSession(err error) bool {
+	var apiErr *apiError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.Status == http.StatusConflict ||
+		(apiErr.Status == http.StatusNotFound && apiErr.Message == "expired")
 }
 
 // finishLogin writes the one answer this service has. Every way in ends here:

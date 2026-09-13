@@ -9,11 +9,12 @@ import (
 	"testing"
 )
 
-// A spent session is the one refusal handleAuth does not pass on. Telegram
-// resumes a mini app that was left open, so the same login link arrives a
-// second time — and the person holding it is verified in Telegram right then.
-// These two tests pin the fork: "already used" goes through the front door,
-// everything else still stops.
+// A stale session is the refusal handleAuth does not pass on. Telegram resumes
+// a mini app that was left open, so the same login link arrives a second time —
+// against a session already spent (409) or long expired (404) — while the
+// person holding it is verified in Telegram right then. These tests pin the
+// fork: both of auth-center's own stale-session refusals go through the front
+// door, a 404 from anything else does not.
 
 // authCenterStub answers /miniapp/auth with the given status and body, and
 // records whether the front door was tried at all.
@@ -58,8 +59,22 @@ func postAuth(t *testing.T) *httptest.ResponseRecorder {
 	return rec
 }
 
-func TestAuthFallsThroughToHomeWhenSessionAlreadyUsed(t *testing.T) {
-	_, homeCalled := authCenterStub(t, http.StatusConflict, `{"error":"session already used"}`)
+func TestAuthFallsThroughToHomeWhenSessionIsStale(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{"already used", http.StatusConflict, `{"error":"session already used"}`},
+		{"expired", http.StatusNotFound, `{"error":"expired"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) { assertFrontDoor(t, tc.status, tc.body) })
+	}
+}
+
+func assertFrontDoor(t *testing.T, status int, body string) {
+	t.Helper()
+	_, homeCalled := authCenterStub(t, status, body)
 
 	rec := postAuth(t)
 	if rec.Code != http.StatusOK {
@@ -83,15 +98,19 @@ func TestAuthFallsThroughToHomeWhenSessionAlreadyUsed(t *testing.T) {
 	}
 }
 
-func TestAuthReportsExpiredSessionInsteadOfFallingThrough(t *testing.T) {
-	_, homeCalled := authCenterStub(t, http.StatusNotFound, `{"error":"expired"}`)
+// A 404 that is not auth-center's own "expired" is a 404 from somewhere else —
+// a mistyped AUTH_INTERNAL, a proxy, a path that moved. Treating that as a
+// stale session would send every login to the home app instead of the app the
+// user asked for, and nothing on screen would say so.
+func TestAuthReportsForeign404InsteadOfFallingThrough(t *testing.T) {
+	_, homeCalled := authCenterStub(t, http.StatusNotFound, "404 page not found\n")
 
 	rec := postAuth(t)
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502 — body %s", rec.Code, rec.Body.String())
 	}
 	if *homeCalled {
-		t.Fatal("an expired session must not become a front-door login")
+		t.Fatal("a 404 from an unknown path must not become a front-door login")
 	}
 }
 
