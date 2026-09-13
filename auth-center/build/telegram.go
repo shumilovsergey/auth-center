@@ -91,8 +91,9 @@ func makeQR(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	qr.BackgroundColor = color.RGBA{R: 8, G: 8, B: 15, A: 255}
-	qr.ForegroundColor = color.RGBA{R: 196, G: 181, B: 253, A: 255}
+	// matches web/style.css: --bg-sunk on --ink
+	qr.BackgroundColor = color.RGBA{R: 10, G: 10, B: 11, A: 255}
+	qr.ForegroundColor = color.RGBA{R: 245, G: 245, B: 247, A: 255}
 	png, err := qr.PNG(256)
 	if err != nil {
 		return "", err
