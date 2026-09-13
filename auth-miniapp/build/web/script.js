@@ -23,22 +23,21 @@
        anything, so the close() lives there. If nothing moves, the greeting and
        the button stay exactly as they were.
 
-     - desktop: hand the link to the real browser with openLink(), then close.
-       The close is armed only for tdesktop and macos, where openLink is a
-       native call: on weba/webk/web it is window.open, a blocked popup looks
-       from here exactly like a successful one, and closing on that guess would
-       leave somebody with neither a tab nor a mini app. Those clients keep the
-       button instead.
+     - desktop: nothing automatic at all. openLink() is what hands the link to
+       the real browser, and on the browser-based clients that call is a
+       window.open — a blocked one looks from here exactly like a successful
+       one, so there is no attempt worth making and nothing safe to close on.
+       The route out stays the button, with the user's gesture behind it.
 
      - QR: close, and nothing else. The browser waiting for this login is on
        another machine, so there is no link that would help here and no button
        worth showing. A close() that the client ignores leaves the name on
        screen, which is the right thing to be left with.
 
-   Closing after a jump is deliberate and it is the one part here that trades
-   safety for tidiness: on a phone the close() lands on the page just navigated
-   to. Both live behind AUTO_* constants below so either can be switched off
-   without touching the flow.
+   Closing after the jump is deliberate and it is the one part here that trades
+   safety for tidiness: the close() lands on the page just navigated to. It
+   lives behind the AUTO_* constants below and can be switched off without
+   touching the flow.
 
    Two rules carried over from the PoC this grew out of:
      - the SDK is loaded with a timeout, never as a blocking <script>, because
@@ -62,11 +61,6 @@ const AUTH_TIMEOUT = 10000;
 // desktop one, and guessing wrong that way costs nothing.
 const DESKTOP_PLATFORMS = ['tdesktop', 'macos', 'weba', 'webk', 'web'];
 
-// The desktop clients that are a real application rather than a browser tab.
-// There openLink() is a native call the client either performs or refuses out
-// loud, so a close() after it is safe. On weba/webk/web the same call is a
-// window.open a blocker can swallow in silence — see the header.
-const NATIVE_DESKTOP = ['tdesktop', 'macos'];
 
 // Longest name the frame takes on one line. The card is 380px wide with 28px
 // padding and the frame another 18px, and the font is 13px monospace — about 33
@@ -82,11 +76,6 @@ const NAME_MAX = 32;
 // Long enough for the greeting to paint and be read as an answer, short enough
 // that nobody has started reaching for the button yet.
 const AUTO_DELAY_MS = 450;
-
-// How long after openLink() the desktop close waits. The client needs a moment
-// to raise its "open this link?" prompt, and closing out from under that prompt
-// cancels the very thing we just asked for.
-const AUTO_CLOSE_MS = 1200;
 
 // A pagehide this long after the automatic jump is taken as that jump landing.
 // Later than this and it is the user leaving on their own — by the button, or
@@ -153,21 +142,15 @@ function signedIn(data) {
   setTimeout(() => autoOnward(back), AUTO_DELAY_MS);
 }
 
-// autoOnward does by itself what the button does when tapped, and closes the
-// mini app if it can tell the jump landed. It is the same goBack routing —
-// deliberately not goBack() itself, because each route needs a different proof
-// that it worked, and that proof is the whole point of this function.
+// autoOnward does by itself what the button does when tapped, on the one route
+// where the page can tell whether it worked. It is deliberately not goBack():
+// that function routes every client, this one runs for the client whose jump
+// leaves proof behind.
 function autoOnward(url) {
-  const platform = tg?.platform;
-
-  if (DESKTOP_PLATFORMS.includes(platform)) {
-    if (!openExternally(url)) {
-      console.warn('[auth-miniapp] auto openLink refused — button stands');
-      return;
-    }
-    if (NATIVE_DESKTOP.includes(platform)) setTimeout(closeApp, AUTO_CLOSE_MS);
-    return;
-  }
+  // Desktop is left alone on purpose: there the way out is openLink(), which on
+  // the browser-based clients is a window.open nobody can verify — see the
+  // header. The button carries that one, gesture and all.
+  if (DESKTOP_PLATFORMS.includes(tg?.platform)) return;
 
   // A phone stays inside Telegram, so the jump replaces this document. Arm the
   // proof before triggering it: once the navigation commits there is no later.
@@ -177,20 +160,6 @@ function autoOnward(url) {
   }, { once: true });
 
   window.location.href = url;
-}
-
-// openExternally reports whether the client took the link at all. A throw is
-// the only refusal it can report — on the browser-based clients a blocked
-// window.open returns quietly, which is why NATIVE_DESKTOP exists.
-function openExternally(url) {
-  if (!tg?.openLink) return false;
-  try {
-    tg.openLink(url);
-    return true;
-  } catch (e) {
-    console.warn('[auth-miniapp] openLink threw', e);
-    return false;
-  }
 }
 
 function closeApp() {
@@ -211,19 +180,17 @@ function closeApp() {
 // Telegram's built-in view leaves them with two copies in two places.
 //
 // Neither path closes the mini app. A tap is the user steering, and they can
-// see where they landed; the automatic attempt in autoOnward is the one that
-// tidies up after itself, because there nobody watched it happen. Which also
-// means a user who reaches this function is a user the automatic route already
-// failed for — leaving their window open is the whole reason the button is
-// still on screen.
+// see where they landed; only the automatic jump in autoOnward tidies up after
+// itself, because there nobody watched it happen. On desktop this function is
+// the only route there is — nothing is attempted before it.
 function goBack(url) {
   const desktop = DESKTOP_PLATFORMS.includes(tg?.platform);
   console.log('[auth-miniapp] platform', tg?.platform, desktop ? '→ browser' : '→ stay in telegram');
 
-  // A refused openLink falls through rather than dead-ending the tap: inside
-  // Telegram's own view is a worse place to land than the browser, but it is a
-  // place, and the tap has to lead somewhere.
-  if (desktop && openExternally(url)) return;
+  if (desktop && tg?.openLink) {
+    tg.openLink(url);
+    return;
+  }
   window.location.href = url;
 }
 
